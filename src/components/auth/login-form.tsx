@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2 } from "lucide-react"
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -38,15 +39,15 @@ export function LoginForm() {
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
 
-    // In a real app, this would call an authentication API
-    console.log(data)
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      // Redirect to dashboard on successful login
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500))
       router.push("/dashboard")
-    }, 1000)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -95,8 +96,19 @@ export function LoginForm() {
             Forgot password?
           </Button>
         </div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Signing in..." : "Sign in"}
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            "Sign in"
+          )}
         </Button>
       </form>
     </Form>

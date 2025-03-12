@@ -9,7 +9,13 @@ import { cn } from "@/lib/utils"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const {scrollToSection} = useScroll()
 
+  const handleAboutClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    scrollToSection('about')
+    setIsMenuOpen(false)
+  }
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
   }
@@ -25,16 +31,16 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link href="/#about" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link href="/#about" onClick={handleAboutClick} className="text-sm font-medium hover:text-primary transition-colors">
             Find Mentors
           </Link>
-          <Link href="/#about" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link href="/#about" onClick={handleAboutClick} className="text-sm font-medium hover:text-primary transition-colors">
             Resources
           </Link>
-          <Link href="/#about" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link href="/#about" onClick={handleAboutClick} className="text-sm font-medium hover:text-primary transition-colors">
             Mental Health
           </Link>
-          <Link href="#about" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link href="#about" onClick={handleAboutClick} className="text-sm font-medium hover:text-primary transition-colors">
             About Us
           </Link>
         </nav>
@@ -87,9 +93,9 @@ export function Navbar() {
               Mental Health
             </Link>
             <Link
-              href="/about"
+              href="#about"
               className="text-lg font-medium hover:text-primary transition-colors"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={handleAboutClick}
             >
               About Us
             </Link>

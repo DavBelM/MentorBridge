@@ -5,7 +5,7 @@ export const useScroll = () => {
     const element = document.getElementById(elementId)
     if (element) {
       element.scrollIntoView({
-        behavior: 'auto',
+        behavior: 'smooth',
         block: 'start',
       })
     }

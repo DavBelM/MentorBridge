@@ -5,6 +5,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,7 +32,11 @@ export default function RootLayout({
         >
           <div className="relative flex flex-col min-h-screen">
             <Navbar />
-            <main className="flex-1 w-full">{children}</main>
+            <main className="flex-1 w-full">
+              <Suspense fallback={<LoadingSpinner />}>
+                {children}
+              </Suspense>
+            </main>
             <Footer />
           </div>
         </ThemeProvider>

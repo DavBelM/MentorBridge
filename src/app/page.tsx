@@ -55,7 +55,10 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section id="about" className="py-20 bg-background dark:bg-background scrool-mt-16">
+      <section 
+        id="about" 
+        className="py-20 bg-background dark:bg-background scroll-mt-16"
+      >
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4 text-foreground">How MentorBridge Works</h2>

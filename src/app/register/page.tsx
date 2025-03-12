@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { RegisterForm } from "@/components/auth/register-form"
+import { Suspense } from "react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export const metadata: Metadata = {
   title: "Register | MentorBridge",
@@ -17,6 +19,7 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
           <p className="text-sm text-muted-foreground">Sign up to connect with mentors and access resources</p>
         </div>
+        <Suspense fallback={<LoadingSpinner />}>
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Sign Up</CardTitle>
@@ -50,6 +53,7 @@ export default function RegisterPage() {
             </div>
           </CardFooter>
         </Card>
+        </Suspense>
       </div>
     </div>
   )

@@ -1,7 +1,18 @@
+"use client"
+
 import Link from "next/link"
-import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react"
+import { useScroll } from "@/hooks/use-scroll"
+/* import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react"
+ */
 
 export function Footer() {
+  const { scrollToSection } = useScroll()
+
+  const handleAboutClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    scrollToSection('about')
+  }
+
   return (
     <footer className="border-t border-border">
       <div className="container mx-auto">
@@ -19,25 +30,29 @@ export function Footer() {
             {/* Quick Links */}
             <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4">
               <Link 
-                href="/#about" 
+                href="#about" 
+                onClick={handleAboutClick}
                 className="text-muted-foreground hover:text-primary transition-colors text-sm"
               >
                 Find Mentors
               </Link>
               <Link 
-                href="/#about" 
+                href="#about" 
+                onClick={handleAboutClick}
                 className="text-muted-foreground hover:text-primary transition-colors text-sm"
               >
                 Resources
               </Link>
               <Link 
-                href="/#about" 
+                href="#about" 
+                onClick={handleAboutClick}
                 className="text-muted-foreground hover:text-primary transition-colors text-sm"
               >
                 Mental Health
               </Link>
               <Link 
-                href="/#about" 
+                href="#about" 
+                onClick={handleAboutClick}
                 className="text-muted-foreground hover:text-primary transition-colors text-sm"
               >
                 About Us
