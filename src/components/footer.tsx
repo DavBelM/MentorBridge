@@ -2,11 +2,14 @@
 
 import Link from "next/link"
 import { useScroll } from "@/hooks/use-scroll"
+import { usePathname } from "next/navigation"
 /* import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react"
  */
 
 export function Footer() {
   const { scrollToSection } = useScroll()
+  const pathname = usePathname()
+  const isDashboard = pathname.startsWith('/dashboard')
 
   const handleAboutClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
@@ -27,37 +30,39 @@ export function Footer() {
               </p>
             </div>
 
-            {/* Quick Links */}
-            <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4">
-              <Link 
-                href="#about" 
-                onClick={handleAboutClick}
-                className="text-muted-foreground hover:text-primary transition-colors text-sm"
-              >
-                Find Mentors
-              </Link>
-              <Link 
-                href="#about" 
-                onClick={handleAboutClick}
-                className="text-muted-foreground hover:text-primary transition-colors text-sm"
-              >
-                Resources
-              </Link>
-              <Link 
-                href="#about" 
-                onClick={handleAboutClick}
-                className="text-muted-foreground hover:text-primary transition-colors text-sm"
-              >
-                Mental Health
-              </Link>
-              <Link 
-                href="#about" 
-                onClick={handleAboutClick}
-                className="text-muted-foreground hover:text-primary transition-colors text-sm"
-              >
-                About Us
-              </Link>
-            </nav>
+            {/* Quick Links - Only show if not in dashboard */}
+            {!isDashboard && (
+              <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+                <Link 
+                  href="#about" 
+                  onClick={handleAboutClick}
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Find Mentors
+                </Link>
+                <Link 
+                  href="#about" 
+                  onClick={handleAboutClick}
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Resources
+                </Link>
+                <Link 
+                  href="#about" 
+                  onClick={handleAboutClick}
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Mental Health
+                </Link>
+                <Link 
+                  href="#about" 
+                  onClick={handleAboutClick}
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  About Us
+                </Link>
+              </nav>
+            )}
           </div>
         </div>
 
