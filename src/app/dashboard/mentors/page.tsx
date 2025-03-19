@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: "Search and connect with mentors in your field",
 }
 
-export default function MentorsPage() {
+export default function MentorsPage({params}: Readonly<{params: {id: string}}>) {
   return (
     <DashboardShell>
       <Suspense fallback={<DashboardSkeleton />}>

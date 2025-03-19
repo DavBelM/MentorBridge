@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation" // Import useRouter
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -39,7 +39,7 @@ const registerFormSchema = z
 type RegisterFormValues = z.infer<typeof registerFormSchema>
 
 export function RegisterForm() {
-  const router = useRouter()
+  const router = useRouter() // Initialize useRouter
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<RegisterFormValues>({
@@ -58,9 +58,11 @@ export function RegisterForm() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      router.push("/dashboard")
+      // Simulate API call (replace this with your actual API call)
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // Redirect to the profile setup page after successful registration
+      router.push("/profile/setup")
     } catch (error) {
       console.error(error)
     } finally {
@@ -78,7 +80,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="My name is" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -179,4 +181,3 @@ export function RegisterForm() {
     </Form>
   )
 }
-
