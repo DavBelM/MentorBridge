@@ -80,7 +80,7 @@ export function Navbar() {
                     Mental Health
                   </Link>
                 </motion.div>
-                <motion.div
+                {/* <motion.div
                   variants={navItemAnimation}
                   initial="rest"
                   whileHover="hover"
@@ -88,7 +88,7 @@ export function Navbar() {
                   <Link href="#about" onClick={handleAboutClick} className="text-sm font-medium hover:text-primary transition-colors">
                     About Us
                   </Link>
-                </motion.div>
+                </motion.div> */}
               </>
             )}
           </motion.nav>

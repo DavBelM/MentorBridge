@@ -252,17 +252,17 @@ export default function ResourceLibraryPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-primary text-primary-foreground">
+      <section className="py-16 bg-primary-foreground text-secondary-foreground">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Access Our Resource Library?</h2>
           <p className="text-xl opacity-90 max-w-2xl mx-auto mb-8">
             Join MentorBridge today and get unlimited access to our comprehensive resource library.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" variant="secondary">
+            <Button asChild size="lg" variant="secondary" className="bg-primary text-secondary hover:bg-secondary/70 hover:text-primary">
               <Link href="/register">Sign Up Now</Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="border-primary-foreground hover:bg-primary-foreground hover:text-primary">
+            <Button asChild size="lg" variant="outline" className="bg-primary text-secondary hover:bg-secondary/70">
               <Link href="/login">Log In</Link>
             </Button>
           </div>

@@ -38,7 +38,7 @@ export default function MentalHealthPage() {
               </div>
             </div>
             
-            <div className="lg:w-1/2 relative mt-8 lg:mt-0">
+           {/*  <div className="lg:w-1/2 relative mt-8 lg:mt-0">
               <div className="relative h-[300px] w-full">
                 <Image
                   src="/placeholder.svg?height=300&width=500"
@@ -48,7 +48,7 @@ export default function MentalHealthPage() {
                   priority
                 />
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
@@ -215,17 +215,17 @@ export default function MentalHealthPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-primary text-primary-foreground">
+      <section className="py-16 bg-primary-foreground text-secondary-foreground">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Prioritize Your Mental Well-being</h2>
           <p className="text-xl opacity-90 max-w-2xl mx-auto mb-8">
             Join MentorBridge today and get access to all our mental health resources and support tools.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" variant="secondary">
+            <Button asChild size="lg" variant="secondary" className="bg-primary text-secondary hover:bg-secondary/70 hover:text-primary">
               <Link href="/register">Sign Up Now</Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="text-primary">
+            <Button asChild size="lg" variant="outline" className="bg-primary text-secondary hover:bg-secondary/70 hover:text-primary">
               <Link href="/login">Log In</Link>
             </Button>
           </div>

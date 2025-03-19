@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-primary text-primary-foreground py-20">
+      <section className="relative bg-primary-foreground text-primary py-20">
         <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center gap-12">
           <div className="lg:w-1/2 space-y-6">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight">
@@ -19,40 +19,40 @@ export default function Home() {
               Empowering African youth through mentorship, skill development, and mental health support.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button asChild size="lg" variant="secondary">
+              <Button asChild size="lg" variant="secondary" className="bg-primary text-secondary hover:bg-primary/70">
                 <Link href="/register">Get Started</Link>
               </Button>
             </div>
           </div>
-          <div className="lg:w-1/2 relative">
+         {/*  <div className="lg:w-1/2 relative">
             <div className="relative h-[400px] w-full">
               <Image
-                src="/placeholder.svg?height=400&width=500"
+                src="/pexels-kampus-5940706.jpg"
                 alt="Mentorship illustration"
                 fill
                 className="object-contain"
                 priority
               />
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Stats */}
         <div className="container mx-auto px-4 mt-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="bg-background/10 backdrop-blur-sm p-6 rounded-lg">
+            <div className="bg-primary text-secondary backdrop-blur-sm p-6 rounded-lg">
               <p className="text-3xl font-bold">
                 <CountUp end={56} duration={3}/>%
                 </p>
               <p className="text-sm mt-2 text-primary-foreground/90">of Black youth wished they had a mentor but did not have one</p>
             </div>
-            <div className="bg-background/10 backdrop-blur-sm p-6 rounded-lg">
+            <div className="bg-primary text-secondary backdrop-blur-sm p-6 rounded-lg">
               <p className="text-3xl font-bold">
               <CountUp end={50} duration={3}/>%
               </p>
               <p className="text-sm mt-2 text-primary-foreground/90">increase in mentorship opportunities within the first year</p>
             </div>
-            <div className="bg-background/10 backdrop-blur-sm p-6 rounded-lg">
+            <div className="bg-primary text-secondary backdrop-blur-sm p-6 rounded-lg">
               <p className="text-3xl font-bold">
               <CountUp end={40} duration={3}/>%
               </p>
@@ -137,7 +137,7 @@ export default function Home() {
                   <span className="font-semibold text-primary">JD</span>
                 </div>
                 <div>
-                  <h4 className="font-semibold">John Doe</h4>
+                  <h4 className="font-semibold">Nick Lemy</h4>
                   <p className="text-sm text-muted-foreground">Software Developer Mentee</p>
                 </div>
               </div>
@@ -153,13 +153,13 @@ export default function Home() {
                   <span className="font-semibold text-primary">JS</span>
                 </div>
                 <div>
-                  <h4 className="font-semibold">Jane Smith</h4>
-                  <p className="text-sm text-muted-foreground">Business Mentor</p>
+                  <h4 className="font-semibold">James Jok</h4>
+                  <p className="text-sm text-muted-foreground">Software Engineer Mentee</p>
                 </div>
               </div>
               <p className="italic text-muted-foreground">
-                "As a mentor on MentorBridge, I've been able to give back to my community and help shape the next
-                generation of business leaders in Africa."
+                "As a student who was struggling to find my path, MentorBridge connected me with a mentor who helped me
+                gain clarity and confidence in my career goals."
               </p>
             </div>
           </div>
@@ -167,17 +167,17 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-primary text-primary-foreground text-center">
+      <section className="py-20 bg-primary-foreground text-secondary-foreground text-center">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-6">Ready to Start Your Journey?</h2>
           <p className="text-xl opacity-90 max-w-2xl mx-auto mb-8">
             Join MentorBridge today and connect with mentors who can help you achieve your goals.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" variant="secondary">
+            <Button asChild size="lg" variant="secondary" className="bg-primary text-secondary hover:bg-secondary/70 hover:text-primary">
               <Link href="/register">Sign Up Now</Link>
             </Button>
-            <Button asChild size="lg" variant="secondary">
+            <Button asChild size="lg" variant="secondary" className="bg-primary text-secondary hover:bg-secondary/70 hover:text-primary">
               <Link href="/login">Login</Link>
             </Button>
           </div>
