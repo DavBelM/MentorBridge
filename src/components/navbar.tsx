@@ -9,18 +9,29 @@ import { Menu, X, User, LogOut } from "lucide-react"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 
 export function Navbar() {
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { scrollToSection } = useScroll()
   const pathname = usePathname()
   const isDashboard = pathname.startsWith('/dashboard')
   const isAuthPage = pathname === '/login' || pathname === '/register'
+  
+  
+
+
 
   const handleAboutClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     scrollToSection('about')
     setIsMenuOpen(false)
+  }
+  const handleLogout = () => {
+    
+    localStorage.removeItem('token')
+    router.push('/login')
   }
 
   // Animation for navbar links
@@ -155,7 +166,7 @@ export function Navbar() {
                 <Link href="/dashboard/profile" className="text-lg font-medium hover:text-primary transition-colors">
                   Profile
                 </Link>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>

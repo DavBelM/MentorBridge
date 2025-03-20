@@ -37,7 +37,7 @@ export default function LoginPage() {
                 Sign up
               </Link>
             </div>
-            <div className="relative">
+            {/* <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
@@ -52,7 +52,7 @@ export default function LoginPage() {
               <Button variant="outline" className="w-full">
                 LinkedIn
               </Button>
-            </div>
+            </div> */}
           </CardFooter>
         </Card>
 
