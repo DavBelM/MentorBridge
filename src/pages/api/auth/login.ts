@@ -1,4 +1,3 @@
-// filepath: /home/mitali/my-new-app/src/pages/api/auth/login.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { loginUser } from '../../../lib/auth';
 

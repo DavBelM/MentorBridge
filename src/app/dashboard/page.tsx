@@ -9,6 +9,7 @@ import { RecommendedResources } from "@/components/dashboard/recommended-resourc
 import { MentalHealthWidget } from "@/components/dashboard/mental-health-widget"
 import { DashboardTransition } from "@/components/dashboard/dashboard-transition"
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 
 export const metadata: Metadata = {
   title: "Dashboard | MentorBridge",
@@ -17,31 +18,33 @@ export const metadata: Metadata = {
 
 export default function DashboardPage() {
   return (
-    <DashboardShell>
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardTransition>
-          <DashboardHeader heading="Dashboard" text="Manage your mentorship journey and access resources." />
+    <ProtectedRoute>
+      <DashboardShell>
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardTransition>
+            <DashboardHeader heading="Dashboard" text="Manage your mentorship journey and access resources." />
 
-          <div className="grid gap-6">
-            <DashboardStats />
+            <div className="grid gap-6">
+              <DashboardStats />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <RecentMentors />
-              <UpcomingSessions />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <RecommendedResources />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <RecentMentors />
+                <UpcomingSessions />
               </div>
-              <div>
-                <MentalHealthWidget />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <RecommendedResources />
+                </div>
+                <div>
+                  <MentalHealthWidget />
+                </div>
               </div>
             </div>
-          </div>
-        </DashboardTransition>
-      </Suspense>
-    </DashboardShell>
+          </DashboardTransition>
+        </Suspense>
+      </DashboardShell>
+    </ProtectedRoute>
   )
 }
 

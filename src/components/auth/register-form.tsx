@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
+import { useAuth } from "@/context/auth-context" // Import the auth hook
 
 const registerFormSchema = z
   .object({
@@ -44,6 +45,7 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>
 export function RegisterForm() {
   const router = useRouter() // Initialize useRouter
   const [isLoading, setIsLoading] = useState(false)
+  const { register } = useAuth() // Use the auth hook
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
@@ -62,13 +64,27 @@ export function RegisterForm() {
     setIsLoading(true)
 
     try {
-      // Simulate API call (replace this with your actual API call)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Redirect to the profile setup page after successful registration
+      // Use the register function from the auth context
+      await register({
+        fullName: data.fullName,
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        role: data.role,
+      })
+      
+      // If registration is successful, redirect to profile setup
       router.push("/profile/setup")
+      
     } catch (error) {
       console.error(error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to register"
+      
+      // Set form error
+      form.setError("root", {
+        type: "manual",
+        message: errorMessage,
+      })
     } finally {
       setIsLoading(false)
     }

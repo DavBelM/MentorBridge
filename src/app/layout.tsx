@@ -8,6 +8,7 @@ import { FooterWrapper } from "@/components/FooterWrapper"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Suspense } from "react"
 import { AnimatePresence } from "framer-motion"
+import { AuthProvider } from "@/context/auth-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -31,17 +32,19 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <AnimatePresence mode="wait">
-          <div className="relative flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-1 w-full">
-              <Suspense fallback={<LoadingSpinner />}>
-                {children}
-              </Suspense>
-            </main>
-            <FooterWrapper />
-          </div>
-          </AnimatePresence>
+          <AuthProvider>
+            <AnimatePresence mode="wait">
+              <div className="relative flex flex-col min-h-screen">
+                <Navbar />
+                <main className="flex-1 w-full">
+                  <Suspense fallback={<LoadingSpinner />}>
+                    {children}
+                  </Suspense>
+                </main>
+                <FooterWrapper />
+              </div>
+            </AnimatePresence>
+          </AuthProvider>
         </ThemeProvider>
         <script
           dangerouslySetInnerHTML={{

@@ -1,27 +1,59 @@
-// filepath: /home/mitali/my-new-app/src/lib/middleware.ts
-import { NextApiRequest, NextApiResponse, NextApiHandler } from 'next';
-
+import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client/edge';
+import { withAccelerate } from '@prisma/extension-accelerate';
 
-interface CustomNextApiRequest extends NextApiRequest {
+const prisma = new PrismaClient().$extends(withAccelerate());
+
+// Extend the NextApiRequest type to include the user property
+declare module 'next' {
+  interface NextApiRequest {
     user?: any;
   }
+}
 
-export function authMiddleware(handler: NextApiHandler) {
-  return async (req: CustomNextApiRequest, res: NextApiResponse) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+// Middleware to protect API routes
+export function authMiddleware(handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void>) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
-      if (!process.env.JWT_SECRET) {
-        return res.status(500).json({ error: 'JWT_SECRET is not defined' });
+      // Get the token from the Authorization header
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized - Missing or invalid token format' });
       }
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-      return handler(req, res);
+      
+      const token = authHeader.split(' ')[1];
+      
+      if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined');
+      }
+      
+      // Verify the token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId: number };
+      
+      // Get the user from the database
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+      });
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Add the user to the request object
+      req.user = user;
+      
+      // Call the handler function
+      return await handler(req, res);
     } catch (error) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      console.error('Authentication error:', error);
+      
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+      
+      return res.status(500).json({ error: 'Internal server error' });
     }
   };
 }

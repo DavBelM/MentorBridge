@@ -1,4 +1,3 @@
-// filepath: /home/mitali/my-new-app/src/pages/api/dashboard.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { authMiddleware } from '../../lib/middleware';
 

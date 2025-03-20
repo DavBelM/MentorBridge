@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
+import { useAuth } from "@/context/auth-context" // Import the auth hook
+import { toast } from "@/components/ui/use-toast" // If you're using a toast component
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -26,6 +28,7 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 export function LoginForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth() // Use the auth hook
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -40,11 +43,24 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Use the login function from the auth context
+      await login(data.email, data.password)
+      
+      // If login is successful, redirect to dashboard
       router.push("/dashboard")
+      
+      // Show success message (if you have a toast component)
+      // toast({ title: "Login successful", description: "Welcome back!" })
     } catch (error) {
       console.error(error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to login"
+      // Show error message
+      // toast({ title: "Login failed", description: errorMessage, variant: "destructive" })
+      
+      form.setError("root", {
+        type: "manual",
+        message: errorMessage,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -53,6 +69,12 @@ export function LoginForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Show any root errors */}
+        {form.formState.errors.root && (
+          <div className="text-sm font-medium text-destructive">
+            {form.formState.errors.root.message}
+          </div>
+        )}
         <FormField
           control={form.control}
           name="email"

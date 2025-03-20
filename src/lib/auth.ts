@@ -2,18 +2,17 @@ import { PrismaClient } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import { register } from 'module'
 
 const prisma = new PrismaClient().$extends(withAccelerate())
 
-export async function registerUser(email: string, password: string) {
+export async function registerUser(email: string, password: string, fullname: string, username: string = 'default' + Date.now(), role: string) {
   const hashedPassword = await bcrypt.hash(password, 10)
   const user = await prisma.user.create({
     data: {
       email,
       password: hashedPassword,
-      fullname: 'Default Fullname',
-      username: 'defaultusername',
+      fullname,
+      username,
       role: 'user',
     },
   })
