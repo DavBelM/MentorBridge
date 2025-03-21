@@ -49,8 +49,8 @@ export function LoginForm() {
       // If login is successful, redirect to dashboard
       router.push("/dashboard")
       
-      // Show success message (if you have a toast component)
-      // toast({ title: "Login successful", description: "Welcome back!" })
+      /* login successful, the profile check and redirect will happen in the proctedroute */
+      router.push("/dashboard")
     } catch (error) {
       console.error(error)
       const errorMessage = error instanceof Error ? error.message : "Failed to login"

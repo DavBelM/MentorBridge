@@ -1,3 +1,5 @@
+"use client"
+
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
@@ -11,14 +13,10 @@ import { DashboardTransition } from "@/components/dashboard/dashboard-transition
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 
-export const metadata: Metadata = {
-  title: "Dashboard | MentorBridge",
-  description: "Manage your mentorship journey and access resources.",
-}
 
 export default function DashboardPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requireProfile={true}>
       <DashboardShell>
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardTransition>

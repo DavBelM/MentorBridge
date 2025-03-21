@@ -11,10 +11,15 @@ const getToken = () => {
 };
 
 // Create headers with auth token
-const getHeaders = () => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = getToken();
+const getHeaders = (contentType = 'application/json') => {
+  const headers: Record<string, string> = {};
   
+  // Only set Content-Type if it's not FormData (let the browser set it)
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+  
+  const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -25,20 +30,26 @@ const getHeaders = () => {
 // Generic fetch wrapper with auth
 export async function apiClient<T>(
   endpoint: string, 
-  { body, ...customConfig }: RequestInit & { body?: any } = {}
+  { body, headers, ...customConfig }: RequestInit & { body?: any } = {}
 ): Promise<T> {
-  const headers = getHeaders();
+  // Determine if we're dealing with FormData
+  const isFormData = body instanceof FormData;
+  
+  // Don't set Content-Type for FormData
+  const defaultHeaders = getHeaders(isFormData ? undefined : 'application/json');
+  
   const config: RequestInit = {
     method: body ? 'POST' : 'GET',
     ...customConfig,
     headers: {
+      ...defaultHeaders,
       ...headers,
-      ...customConfig.headers,
     },
   };
 
   if (body) {
-    config.body = JSON.stringify(body);
+    // If it's FormData, use it directly; otherwise, stringify it
+    config.body = isFormData ? body : JSON.stringify(body);
   }
 
   const response = await fetch(`${API_URL}${endpoint}`, config);

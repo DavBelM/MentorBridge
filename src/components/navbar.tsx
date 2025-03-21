@@ -15,14 +15,27 @@ export function Navbar() {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { scrollToSection } = useScroll()
-  const pathname = usePathname()
+  const pathname = usePathname() || ''
   const isDashboard = pathname.startsWith('/dashboard')
   const isAuthPage = pathname === '/login' || pathname === '/register'
+  const isProfileSetup = pathname.startsWith('/profile/setup')
   
+  // For profile setup, render a minimal header
+  if (isProfileSetup) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link href="/" className="font-bold text-xl text-primary">
+              MentorBridge
+            </Link>
+          </div>
+          <ModeToggle />
+        </div>
+      </header>
+    )
+  }
   
-
-
-
   const handleAboutClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     scrollToSection('about')

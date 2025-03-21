@@ -115,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     
     try {
+      const uniqueUsername = userData.username || `${userData.fullName.toLowerCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-6)}`
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -122,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({
           fullname: userData.fullName,
-          username: userData.username,
+          username: uniqueUsername,
           email: userData.email,
           password: userData.password,
           role: userData.role
@@ -149,6 +150,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token")
     setUser(null)
     router.push("/login")
+  }
+
+  // Check username availability function
+  const checkUsernameAvailability = async (username: string) => {
+    try {
+      const response = await fetch(`/api/check-username?username=${encodeURIComponent(username)}`)
+      const data = await response.json()
+      return { available: data.available }
+    } catch (error) {
+      console.error("Error checking username:", error)
+      return { available: false, error: "Failed to check username availability" }
+    }
   }
 
   return (
