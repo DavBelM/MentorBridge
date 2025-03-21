@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/context/auth-context" // Import the auth hook
+import { LoadingButton } from "@/components/ui/loading-button"
 
 const registerFormSchema = z
   .object({
@@ -210,20 +211,15 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
-        <Button 
+        <LoadingButton 
           type="submit" 
           className="w-full" 
-          disabled={isLoading}
+          isLoading={isLoading}
+          loadingText="Creating account..."
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating account...
-            </>
-          ) : (
-            "Create account"
-          )}
-        </Button>
+         Create account
+          
+        </LoadingButton>
       </form>
     </Form>
   )

@@ -8,7 +8,6 @@ import { ModeToggle } from "@/components/ui/mode-toggle"
 import { Menu, X, User, LogOut } from "lucide-react"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 
 export function Navbar() {
@@ -42,88 +41,39 @@ export function Navbar() {
     setIsMenuOpen(false)
   }
   const handleLogout = () => {
-    
     localStorage.removeItem('token')
     router.push('/login')
-  }
-
-  // Animation for navbar links
-  const navItemAnimation = {
-    rest: { scale: 1 },
-    hover: { scale: 1.05, transition: { duration: 0.2 } }
   }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background backdrop-blur supports-[backdrop-filter]:bg-background/90">
       <div className="container flex h-16 items-center justify-around">
-        <motion.div 
-          className="flex items-center gap-2"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Link href={isDashboard ? "/dashboard" : "/"} className="font-bold text-xl text-primary hover:scale-105 transition-transform">
+        <div className="flex items-center gap-2">
+          <Link href={isDashboard ? "/dashboard" : "/"} className="font-bold text-xl text-primary hover:text-primary/80 transition-colors">
             MentorBridge
           </Link>
-        </motion.div>
+        </div>
 
         {/* Desktop Navigation - Only show full nav if not on auth pages */}
         {!isAuthPage && (
-          <motion.nav 
-            className="hidden md:flex items-center gap-6"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          <nav className="hidden md:flex items-center gap-6">
             {!isDashboard && (
               <>
-                <motion.div
-                  variants={navItemAnimation}
-                  initial="rest"
-                  whileHover="hover"
-                >
-                  <Link href="/features/mentorship" className="text-sm font-medium hover:text-primary transition-colors">
-                    Find Mentors
-                  </Link>
-                </motion.div>
-                <motion.div
-                  variants={navItemAnimation}
-                  initial="rest"
-                  whileHover="hover"
-                >
-                  <Link href="/features/resources" className="text-sm font-medium hover:text-primary transition-colors">
-                    Resources
-                  </Link>
-                </motion.div>
-                <motion.div
-                  variants={navItemAnimation}
-                  initial="rest"
-                  whileHover="hover"
-                >
-                  <Link href="/features/mental-health" className="text-sm font-medium hover:text-primary transition-colors">
-                    Mental Health
-                  </Link>
-                </motion.div>
-                {/* <motion.div
-                  variants={navItemAnimation}
-                  initial="rest"
-                  whileHover="hover"
-                >
-                  <Link href="#about" onClick={handleAboutClick} className="text-sm font-medium hover:text-primary transition-colors">
-                    About Us
-                  </Link>
-                </motion.div> */}
+                <Link href="/features/mentorship" className="text-sm font-medium hover:text-primary transition-colors">
+                  Find Mentors
+                </Link>
+                <Link href="/features/resources" className="text-sm font-medium hover:text-primary transition-colors">
+                  Resources
+                </Link>
+                <Link href="/features/mental-health" className="text-sm font-medium hover:text-primary transition-colors">
+                  Mental Health
+                </Link>
               </>
             )}
-          </motion.nav>
+          </nav>
         )}
 
-        <motion.div 
-          className="hidden md:flex items-center gap-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <div className="hidden md:flex items-center gap-4">
           <ModeToggle />
           {isDashboard ? (
             <>
@@ -133,7 +83,7 @@ export function Navbar() {
                   Profile
                 </Link>
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
@@ -144,17 +94,15 @@ export function Navbar() {
             </Button>
           ) : (
             <>
-              <Button asChild variant="outline" size="sm" 
-                className="hover:scale-105 transition-transform">
-                <Link href="/login">Log In</Link>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/login" prefetch>Log In</Link>
               </Button>
-              <Button asChild size="sm" 
-                className="hover:scale-105 transition-transform">
-                <Link href="/register">Sign Up</Link>
+              <Button asChild size="sm">
+                <Link href="/register" prefetch>Sign Up</Link>
               </Button>
             </>
           )}
-        </motion.div>
+        </div>
 
         {/* Mobile Menu Button - Don't show full menu on auth pages */}
         {!isAuthPage && (
@@ -195,7 +143,7 @@ export function Navbar() {
                 <Link href="/features/mental-health" className="text-lg font-medium hover:text-primary transition-colors">
                   Mental Health
                 </Link>
-                <Link href="#about" className="text-lg font-medium hover:text-primary transition-colors">
+                <Link href="#about" onClick={handleAboutClick} className="text-lg font-medium hover:text-primary transition-colors">
                   About Us
                 </Link>
                 <div className="flex flex-col gap-4">

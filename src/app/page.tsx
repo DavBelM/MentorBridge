@@ -1,9 +1,11 @@
-"use client";
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, BookOpen, Brain, Users } from "lucide-react"
 import Image from "next/image"
-import CountUp from "react-countup"
+// Import components directly instead of using dynamic imports (temporarily)
+import FeatureShowcase from '@/components/FeatureShowcase'
+import TestimonialsSection from '@/components/TestimonialsSection'
+import CountUpSection from '@/components/CountUpSection'
 
 export default function Home() {
   return (
@@ -37,29 +39,8 @@ export default function Home() {
           </div> */}
         </div>
 
-        {/* Stats */}
-        <div className="container mx-auto px-4 mt-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="bg-primary text-secondary backdrop-blur-sm p-6 rounded-lg">
-              <p className="text-3xl font-bold">
-                <CountUp end={56} duration={3}/>%
-                </p>
-              <p className="text-sm mt-2 text-primary-foreground/90">of Black youth wished they had a mentor but did not have one</p>
-            </div>
-            <div className="bg-primary text-secondary backdrop-blur-sm p-6 rounded-lg">
-              <p className="text-3xl font-bold">
-              <CountUp end={50} duration={3}/>%
-              </p>
-              <p className="text-sm mt-2 text-primary-foreground/90">increase in mentorship opportunities within the first year</p>
-            </div>
-            <div className="bg-primary text-secondary backdrop-blur-sm p-6 rounded-lg">
-              <p className="text-3xl font-bold">
-              <CountUp end={40} duration={3}/>%
-              </p>
-              <p className="text-sm mt-2 text-primary-foreground/90">improvement in skill proficiency after six months</p>
-            </div>
-          </div>
-        </div>
+        {/* Stats Section */}
+        <CountUpSection />
       </section>
 
       {/* Features Section */}
@@ -120,51 +101,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-20 bg-muted text-muted-foreground">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4 text-foreground">Success Stories</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Hear from mentees and mentors who have experienced the power of MentorBridge.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-card text-card-foreground p-8 rounded-xl shadow-sm border border-border">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="font-semibold text-primary">JD</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Nick Lemy</h4>
-                  <p className="text-sm text-muted-foreground">Software Developer Mentee</p>
-                </div>
-              </div>
-              <p className="italic text-muted-foreground">
-                "MentorBridge connected me with a senior developer who helped me navigate my career path. The resources
-                and support have been invaluable to my growth."
-              </p>
-            </div>
-
-            <div className="bg-card text-card-foreground p-8 rounded-xl shadow-sm border border-border">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="font-semibold text-primary">JS</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold">James Jok</h4>
-                  <p className="text-sm text-muted-foreground">Software Engineer Mentee</p>
-                </div>
-              </div>
-              <p className="italic text-muted-foreground">
-                "As a student who was struggling to find my path, MentorBridge connected me with a mentor who helped me
-                gain clarity and confidence in my career goals."
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Testimonials Section */}
+      <TestimonialsSection />
 
       {/* CTA Section */}
       <section className="py-20 bg-primary-foreground text-secondary-foreground text-center">

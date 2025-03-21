@@ -11,6 +11,10 @@ type User = {
   role: string
 }
 
+// Add caching mechanism
+const TOKEN_CACHE_KEY = "auth_token"
+const USER_CACHE_KEY = "auth_user"
+
 type AuthContextType = {
   user: User | null
   isLoading: boolean
@@ -39,7 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuthStatus = async () => {
       setIsLoading(true)
-      const token = localStorage.getItem("token")
+      
+      // Try to get user from sessionStorage first for faster load
+      const cachedUser = sessionStorage.getItem(USER_CACHE_KEY)
+      if (cachedUser) {
+        try {
+          setUser(JSON.parse(cachedUser))
+          setIsLoading(false)
+          // Continue with token validation in background
+        } catch (e) {
+          // Invalid cached user, continue with normal flow
+          sessionStorage.removeItem(USER_CACHE_KEY)
+        }
+      }
+      
+      const token = localStorage.getItem(TOKEN_CACHE_KEY)
       
       if (token) {
         try {
@@ -53,14 +71,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (response.ok) {
             const data = await response.json()
             setUser(data.user)
+            // Cache the user for faster loads
+            sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
           } else {
             // Token is invalid - remove it
-            localStorage.removeItem("token")
+            localStorage.removeItem(TOKEN_CACHE_KEY)
+            sessionStorage.removeItem(USER_CACHE_KEY)
             setUser(null)
           }
         } catch (error) {
           console.error("Auth status check error:", error)
-          localStorage.removeItem("token")
+          localStorage.removeItem(TOKEN_CACHE_KEY)
+          sessionStorage.removeItem(USER_CACHE_KEY)
           setUser(null)
         }
       } else {
@@ -77,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", checkAuthStatus)
   }, [])
 
-  // Login function
+  // Login function with optimizations
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     
@@ -97,8 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const data = await response.json()
       
-      // Store token and user data
-      localStorage.setItem("token", data.token)
+      // Store token and user data with optimized keys
+      localStorage.setItem(TOKEN_CACHE_KEY, data.token)
+      sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
       setUser(data.user)
       
       return data
@@ -147,7 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Logout function
   const logout = () => {
-    localStorage.removeItem("token")
+    localStorage.removeItem(TOKEN_CACHE_KEY)
+    sessionStorage.removeItem(USER_CACHE_KEY)
     setUser(null)
     router.push("/login")
   }
