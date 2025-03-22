@@ -18,8 +18,8 @@ const loginFormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  password: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
+  password: z.string().min(1, {
+    message: "Please enter your password.",
   }),
   rememberMe: z.boolean().default(false),
 })
@@ -47,16 +47,17 @@ export function LoginForm() {
       // Use the login function from the auth context
       await login(data.email, data.password)
       
-      // If login is successful, redirect to dashboard
-      router.push("/dashboard")
+      // IMPORTANT: Remove this duplicate redirect
+      // router.push("/dashboard")
       
-      /* login successful, the profile check and redirect will happen in the proctedroute */
-      router.push("/dashboard")
+      // Add a small delay to ensure state updates
+      setTimeout(() => {
+        // Single redirect
+        router.push("/dashboard")
+      }, 200)
     } catch (error) {
       console.error(error)
       const errorMessage = error instanceof Error ? error.message : "Failed to login"
-      // Show error message
-      // toast({ title: "Login failed", description: errorMessage, variant: "destructive" })
       
       form.setError("root", {
         type: "manual",

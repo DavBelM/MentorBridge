@@ -101,35 +101,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Login function with optimizations
   const login = async (email: string, password: string) => {
-    setIsLoading(true)
+    if (!email || !password) {
+      throw new Error("Email and password are required");
+    }
+
+    setIsLoading(true);
     
     try {
+      console.log("Attempting login with:", email);
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password })
-      })
-      
+        body: JSON.stringify({ email, password }),
+      });
+
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Login failed")
+        const data = await response.json();
+        throw new Error(data.error || "Login failed");
+      }
+
+      const { token, user } = await response.json();
+      
+      // Debug token format
+      console.log("Received token:", token ? "Yes (length: " + token.length + ")" : "No");
+
+      // Store auth data
+      if (token) {
+        localStorage.setItem("token", token);
+        sessionStorage.setItem("auth_user", JSON.stringify(user));
+        console.log("Token saved in localStorage");
+      } else {
+        throw new Error("No token received from server");
       }
       
-      const data = await response.json()
-      
-      // Store token and user data with optimized keys
-      localStorage.setItem(TOKEN_CACHE_KEY, data.token)
-      sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
-      setUser(data.user)
-      
-      return data
-    } catch (error) {
-      console.error("Login error:", error)
-      throw error
+      setUser(user);
+      return user;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 

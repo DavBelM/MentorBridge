@@ -32,42 +32,74 @@ export async function apiClient<T>(
   endpoint: string, 
   { body, headers, ...customConfig }: RequestInit & { body?: any } = {}
 ): Promise<T> {
-  // Determine if we're dealing with FormData
   const isFormData = body instanceof FormData;
   
-  // Don't set Content-Type for FormData
-  const defaultHeaders = getHeaders(isFormData ? undefined : 'application/json');
+  // Get token from localStorage
+  const token = typeof window !== 'undefined' 
+    ? localStorage.getItem('token') 
+    : null;
   
   const config: RequestInit = {
-    method: body ? 'POST' : 'GET',
+    method: 'GET',
     ...customConfig,
     headers: {
-      ...defaultHeaders,
+      // For non-FormData requests
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+      // Add authorization header if token exists
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...headers,
     },
   };
-
+  
+  // Handle body based on type
   if (body) {
-    // If it's FormData, use it directly; otherwise, stringify it
-    config.body = isFormData ? body : JSON.stringify(body);
-  }
-
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || response.statusText);
+    if (isFormData) {
+      config.body = body;
+    } else {
+      config.body = JSON.stringify(body);
+    }
   }
   
-  return response.json();
+  try {
+    console.log(`Fetching ${endpoint} with auth:`, token ? 'Yes' : 'No');
+    
+    const response = await fetch(`${endpoint}`, config);
+    
+    if (!response.ok) {
+      // Try to parse error response as JSON
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || response.statusText);
+    }
+    
+    // For empty responses, return empty object
+    if (response.status === 204) {
+      return {} as T;
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("API request failed:", error);
+    throw error;
+  }
 }
 
 // Convenience methods
 export const get = <T>(endpoint: string, config?: RequestInit) => 
   apiClient<T>(endpoint, { ...config, method: 'GET' });
 
-export const post = <T>(endpoint: string, body: any, config?: RequestInit) => 
-  apiClient<T>(endpoint, { ...config, method: 'POST', body });
+// Update post to handle FormData correctly
+export const post = <T>(endpoint: string, body: any, config?: RequestInit) => {
+  const isFormData = body instanceof FormData;
+  
+  return apiClient<T>(endpoint, { 
+    ...config, 
+    method: 'POST', 
+    // Don't manually set the content type for FormData
+    // The browser will set the appropriate boundary
+    headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+    body 
+  });
+}
 
 export const put = <T>(endpoint: string, body: any, config?: RequestInit) => 
   apiClient<T>(endpoint, { ...config, method: 'PUT', body });

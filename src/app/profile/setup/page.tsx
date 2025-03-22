@@ -89,6 +89,7 @@ export default function ProfileSetupPage() {
 
   async function onSubmit(data: ProfileFormValues) {
     setIsSubmitting(true)
+    
     try {
       const formData = new FormData()
       
@@ -101,15 +102,14 @@ export default function ProfileSetupPage() {
         }
       })
       
-      // Add user ID
-      if (user?.id) {
-        formData.append("userId", String(user.id))
-      }
+      // No need to append userId - the API will get it from the token
+      
+      // Log the form data for debugging
+      console.log("Submitting form data with fields:", Object.fromEntries(formData.entries()));
 
-      // Call the API to save profile
-      await post('/api/profile', formData)
-      // When sending FormData, don't set Content-Type header
-      // to allow the browser to set it automatically with the correct boundary
+      // Call the API to save profile using the updated post function
+      const result = await post('/api/profile', formData);
+      console.log("Profile created:", result);
       
       toast({
         title: "Profile created successfully!",
@@ -117,8 +117,12 @@ export default function ProfileSetupPage() {
         variant: "default",
       })
 
-      // Redirect to dashboard after successful profile creation
-      router.push("/dashboard")
+      // Role-based redirection
+      if (role === "MENTOR") {
+        router.push("/dashboard/mentor");
+      } else {
+        router.push("/dashboard/mentee");
+      }
     } catch (error) {
       console.error('Error creating profile:', error)
       toast({
