@@ -106,3 +106,20 @@ export const put = <T>(endpoint: string, body: any, config?: RequestInit) =>
 
 export const del = <T>(endpoint: string, config?: RequestInit) => 
   apiClient<T>(endpoint, { ...config, method: 'DELETE' });
+
+export async function patch<T>(url: string, data: any): Promise<T> {
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`);
+  }
+  
+  return response.json();
+}

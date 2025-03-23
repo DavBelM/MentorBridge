@@ -3,36 +3,57 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { useRouter } from "next/navigation"
 
+// Define proper types for user and profile
+type Profile = {
+  id: number
+  bio?: string | null
+  location?: string | null
+  linkedin?: string | null
+  twitter?: string | null
+  profilePicture?: string | null
+  experience?: string | null
+  skills?: string | null
+  availability?: string | null
+  interests?: string | null
+  learningGoals?: string | null
+  userId: number
+  createdAt: string
+  updatedAt: string
+}
+
 type User = {
   id: number
   fullname: string
   username: string
   email: string
-  role: string
+  role: 'MENTOR' | 'MENTEE'
+  createdAt: string
+  updatedAt: string
+  profile: Profile | null
 }
 
 // Add caching mechanism
 const TOKEN_CACHE_KEY = "auth_token"
 const USER_CACHE_KEY = "auth_user"
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null
   isLoading: boolean
-  isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (userData: RegisterData) => Promise<void>
+  register: (userData: any) => Promise<void>
   logout: () => void
+  isAuthenticated: boolean
 }
 
-type RegisterData = {
-  fullName: string
-  username: string
-  email: string
-  password: string
-  role: string
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+// Create the context with a default value
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isLoading: true,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+  isAuthenticated: false,
+})
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -99,6 +120,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", checkAuthStatus)
   }, [])
 
+  // When fetching the user
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await fetch('/api/user');
+        if (response.ok) {
+          const userData = await response.json();
+          // Make sure user data matches your User type
+          setUser(userData.user || userData);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadUser();
+  }, []);
+
   // Login function with optimizations
   const login = async (email: string, password: string) => {
     if (!email || !password) {
@@ -145,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Register function
-  const register = async (userData: RegisterData) => {
+  const register = async (userData: any) => {
     setIsLoading(true)
     
     try {
