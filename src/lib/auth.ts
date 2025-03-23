@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { NextApiRequest } from 'next';
 
 const prisma = new PrismaClient().$extends(withAccelerate())
 
@@ -76,5 +77,66 @@ export async function loginUser(email: string, password: string) {
         expiresIn: '7d',
     });
     return {token, user};
+}
+
+/**
+ * Gets the current user session from an API request
+ * Works with the Pages Router (/pages/api/) endpoints
+ */
+export async function getSession(req?: NextApiRequest) {
+  try {
+    // If no request is provided, return null
+    if (!req) {
+      return null;
     }
+
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify token
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not defined');
+      return null;
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Get the user from database using the userId from the token
+      const userId = (decoded as { userId: number }).userId;
+      if (!userId) {
+        return null;
+      }
+      
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          profile: true,
+        },
+      });
+      
+      if (!user) {
+        return null;
+      }
+      
+      // Remove password from user object
+      const { password: _, ...userWithoutPassword } = user;
+      
+      return {
+        user: userWithoutPassword,
+      };
+    } catch (error) {
+      console.error('Error verifying JWT token:', error);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+}
 

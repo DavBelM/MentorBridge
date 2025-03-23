@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/router"
 
 type Connection = {
   id: number
@@ -33,6 +34,7 @@ export default function ConnectionsPage() {
   const { user } = useAuth()
   const [connections, setConnections] = useState<Connection[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     async function fetchConnections() {
@@ -144,7 +146,11 @@ export default function ConnectionsPage() {
                   )}
                   {connection.status === 'accepted' && (
                     <>
-                      <Button variant="outline" className="w-full sm:w-auto">
+                      <Button 
+                        variant="outline" 
+                        className="w-full sm:w-auto"
+                        onClick={() => router.push(`/dashboard/messages?thread=${connection.id}`)}
+                      >
                         Message
                       </Button>
                       <Button className="w-full sm:w-auto">

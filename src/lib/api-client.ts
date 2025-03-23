@@ -118,7 +118,8 @@ export async function patch<T>(url: string, data: any): Promise<T> {
   });
   
   if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
   }
   
   return response.json();
