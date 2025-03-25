@@ -1,30 +1,33 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client/edge';
-import { withAccelerate } from '@prisma/extension-accelerate';
-import { getSession } from '@/lib/auth';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../auth/[...nextauth]';
+import { prisma } from '@/lib/prisma';
+import formidable from 'formidable';
+import { mkdir, writeFile } from 'fs/promises';
+import path from 'path';
+import { disconnect } from 'process';
 
-const prisma = new PrismaClient().$extends(withAccelerate());
+// Configure formidable to parse multipart form data
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Check authentication
-  const session = await getSession(req);
-  if (!session?.user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  const session = await getServerSession(req, res, authOptions);
+  
+  if (!session) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
   
-  // Get the ID from the URL
   const { id } = req.query;
-  const resourceId = parseInt(id as string);
   
-  if (isNaN(resourceId)) {
-    return res.status(400).json({ error: 'Invalid resource ID' });
-  }
-  
-  // Handle GET request
+  // Handle GET request to fetch a resource
   if (req.method === 'GET') {
     try {
       const resource = await prisma.resource.findUnique({
-        where: { id: resourceId },
+        where: { id: Number(id) },
         include: {
           createdBy: {
             select: {
@@ -62,78 +65,136 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Error fetching resource:', error);
       return res.status(500).json({ error: 'Failed to fetch resource' });
     }
-  }
-  
-  // Handle PATCH request
-  if (req.method === 'PATCH') {
+  } 
+  // Handle PATCH request to update a resource
+  else if (req.method === 'PATCH') {
     try {
-      // Get the resource to check ownership
-      const existingResource = await prisma.resource.findUnique({
-        where: { id: resourceId },
+      // Check resource ownership
+      const resource = await prisma.resource.findUnique({
+        where: { id: Number(id) },
+        select: { createdById: true }
       });
       
-      if (!existingResource) {
-        return res.status(404).json({ error: 'Resource not found' });
+      if (!resource) {
+        return res.status(404).json({ error: "Resource not found" });
       }
       
-      // Check if user is the creator
-      if (existingResource.createdById !== session.user.id) {
-        return res.status(403).json({ error: 'You do not have permission to update this resource' });
+      if (resource.createdById !== session.user.id) {
+        return res.status(403).json({ error: "You don't have permission to update this resource" });
       }
       
-      const { title, description, type, url, isPublic, collectionIds } = req.body;
-      
-      // Update the resource
-      const updatedResource = await prisma.resource.update({
-        where: { id: resourceId },
-        data: {
-          ...(title && { title }),
-          ...(description !== undefined && { description }),
-          ...(type && { type }),
-          ...(url !== undefined && { url }),
-          ...(isPublic !== undefined && { isPublic }),
-          ...(collectionIds && {
-            collections: {
-              set: [], // Remove existing connections
-              connect: collectionIds.map((id: number) => ({ id })),
-            },
-          }),
+      // Parse the form data with file
+      const form = formidable({
+        maxFileSize: 10 * 1024 * 1024, // 10MB limit
+        uploadDir: path.join(process.cwd(), 'public/uploads'),
+        filename: (_name, _ext, part) => {
+          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          return `${session.user.id}-${uniqueSuffix}${path.extname(part.originalFilename || '')}`
         },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-              profile: {
-                select: {
-                  profilePicture: true,
-                },
+        filter: (part) => {
+          // Filter file uploads by mimetype
+          return part.name === 'file' && 
+                 !!(part.mimetype?.includes('pdf') || 
+                  part.mimetype?.includes('word') || 
+                  part.mimetype?.includes('excel') || 
+                  part.mimetype?.includes('presentation'));
+        },
+      });
+      
+      // Ensure uploads directory exists
+      const uploadDir = path.join(process.cwd(), 'public/uploads');
+      await mkdir(uploadDir, { recursive: true });
+      
+      return new Promise((resolve, reject) => {
+        form.parse(req, async (err, fields, files) => {
+          if (err) {
+            console.error("Error parsing form data:", err);
+            res.status(500).json({ error: "Failed to process file upload" });
+            return resolve(null);
+          }
+          
+          try {
+            const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+            const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
+            const type = Array.isArray(fields.type) ? fields.type[0] : fields.type;
+            const isPublic = Array.isArray(fields.isPublic) 
+              ? fields.isPublic[0] === 'true' 
+              : fields.isPublic === 'true';
+            const url = Array.isArray(fields.url) ? fields.url[0] : fields.url;
+            const collectionIdsStr = Array.isArray(fields.collectionIds) 
+              ? fields.collectionIds[0] 
+              : fields.collectionIds;
+            
+            // Process collections
+            let collectionIds: number[] = [];
+            if (collectionIdsStr) {
+              try {
+                collectionIds = JSON.parse(collectionIdsStr);
+              } catch (e) {
+                console.error("Error parsing collectionIds:", e);
+              }
+            }
+            
+            // Handle file upload
+            let fileUrl: string | null = null;
+            
+            if (files.file) {
+              const file = Array.isArray(files.file) ? files.file[0] : files.file;
+              fileUrl = `/uploads/${path.basename(file.filepath)}`;
+            }
+            
+            // Update resource in database
+            const updatedResource = await prisma.resource.update({
+              where: { id: Number(id) },
+              data: {
+                title,
+                description,
+                type,
+                url: fileUrl || url || null,
+                isPublic,
               },
-            },
-          },
-          collections: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
+            });
+            
+            // Handle collection associations
+            if (collectionIds.length > 0) {
+              // First, get the existing resource with its collections
+              const existingResource = await prisma.resource.findUnique({
+                where: { id: Number(id) },
+                include: { collections: true }
+              });
+              
+              // Update resource-collection relationships
+              await prisma.resource.update({
+                where: { id: Number(id) },
+                data: {
+                  collections: {
+                    disconnect: existingResource?.collections.map(col => ({ id: col.id })) || [],
+                    connect: collectionIds.map(colId => ({ id: colId }))
+                  }
+                }
+              });
+            }
+            
+            res.status(200).json({ resource: updatedResource });
+            return resolve(null);
+          } catch (error) {
+            console.error("Error updating resource:", error);
+            res.status(500).json({ error: "Failed to update resource" });
+            return resolve(null);
+          }
+        });
       });
-      
-      return res.status(200).json({ resource: updatedResource });
     } catch (error) {
-      console.error('Error updating resource:', error);
-      return res.status(500).json({ error: 'Failed to update resource' });
+      console.error("Error updating resource:", error);
+      return res.status(500).json({ error: "Failed to update resource" });
     }
-  }
-  
+  } 
   // Handle DELETE request
-  if (req.method === 'DELETE') {
+  else if (req.method === 'DELETE') {
     try {
       // Get the resource to check ownership
       const existingResource = await prisma.resource.findUnique({
-        where: { id: resourceId },
+        where: { id: Number(id) },
       });
       
       if (!existingResource) {
@@ -147,7 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Delete the resource
       await prisma.resource.delete({
-        where: { id: resourceId },
+        where: { id: Number(id) },
       });
       
       return res.status(200).json({ success: true });
@@ -155,8 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Error deleting resource:', error);
       return res.status(500).json({ error: 'Failed to delete resource' });
     }
+  } else {
+    return res.status(405).json({ error: "Method not allowed" });
   }
-  
-  // Handle unsupported methods
-  return res.status(405).json({ error: `Method ${req.method} not allowed` });
 }
