@@ -91,6 +91,11 @@ export default function SettingsPage() {
   
   // Handle account deactivation
   const handleDeactivateAccount = async () => {
+    // Add confirmation dialog
+    if (!window.confirm("Are you sure you want to deactivate your account? This cannot be undone.")) {
+      return;
+    }
+    
     setIsDeactivating(true)
     
     try {
