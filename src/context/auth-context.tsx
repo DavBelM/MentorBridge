@@ -43,21 +43,30 @@ interface AuthContextType {
   register: (userData: any) => Promise<void>
   logout: () => void
   isAuthenticated: boolean
+  error: string | null
+  clearError: () => void
+  updateUser: (userData: Partial<User>) => void
+  checkUsernameAvailability: (username: string) => Promise<{available: boolean, error?: string}>
 }
 
 // Create the context with a default value
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
+  error: null,
   login: async () => {},
   register: async () => {},
   logout: () => {},
   isAuthenticated: false,
+  clearError: () => {},
+  updateUser: () => {},
+  checkUsernameAvailability: async () => ({ available: false }),
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   // Check if user is already logged in (on mount and when localStorage changes)
@@ -65,94 +74,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuthStatus = async () => {
       setIsLoading(true)
       
-      // Try to get user from sessionStorage first for faster load
-      const cachedUser = sessionStorage.getItem(USER_CACHE_KEY)
-      if (cachedUser) {
-        try {
+      try {
+        // First check session storage for cached user data
+        const cachedUser = sessionStorage.getItem(USER_CACHE_KEY)
+        if (cachedUser) {
           setUser(JSON.parse(cachedUser))
-          setIsLoading(false)
-          // Continue with token validation in background
-        } catch (e) {
-          // Invalid cached user, continue with normal flow
-          sessionStorage.removeItem(USER_CACHE_KEY)
         }
-      }
-      
-      const token = localStorage.getItem(TOKEN_CACHE_KEY)
-      
-      if (token) {
-        try {
-          // Verify the token and get user data
-          const response = await fetch("/api/me", {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            setUser(data.user)
-            // Cache the user for faster loads
-            sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
-          } else {
-            // Token is invalid - remove it
-            localStorage.removeItem(TOKEN_CACHE_KEY)
-            sessionStorage.removeItem(USER_CACHE_KEY)
-            setUser(null)
+        
+        const token = localStorage.getItem(TOKEN_CACHE_KEY)
+        
+        if (!token) {
+          setUser(null)
+          setIsLoading(false)
+          return
+        }
+        
+        // Verify token with API
+        const response = await fetch('/api/auth/verify', {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
-        } catch (error) {
-          console.error("Auth status check error:", error)
+        })
+        
+        if (!response.ok) {
           localStorage.removeItem(TOKEN_CACHE_KEY)
           sessionStorage.removeItem(USER_CACHE_KEY)
           setUser(null)
+          setIsLoading(false)
+          return
         }
-      } else {
+        
+        const data = await response.json()
+        setUser(data.user)
+        
+        // Cache user data in session storage
+        sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        localStorage.removeItem(TOKEN_CACHE_KEY)
+        sessionStorage.removeItem(USER_CACHE_KEY)
         setUser(null)
+      } finally {
+        setIsLoading(false)
       }
-      
-      setIsLoading(false)
     }
 
     checkAuthStatus()
     
-    // Listen for storage events (when token changes in another tab)
+    // Listen for storage changes to support multiple tabs
     window.addEventListener("storage", checkAuthStatus)
     return () => window.removeEventListener("storage", checkAuthStatus)
   }, [])
 
-  // When fetching the user
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const response = await fetch('/api/user');
-        if (response.ok) {
-          const userData = await response.json();
-          // Make sure user data matches your User type
-          setUser(userData.user || userData);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    loadUser();
-  }, []);
-
   // Login function with optimizations
   const login = async (email: string, password: string) => {
     if (!email || !password) {
+      setError("Email and password are required");
       throw new Error("Email and password are required");
     }
 
     setIsLoading(true);
+    setError(null);
     
     try {
-      console.log("Attempting login with:", email);
-      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -163,25 +147,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const data = await response.json();
+        setError(data.error || "Login failed");
         throw new Error(data.error || "Login failed");
       }
 
       const { token, user } = await response.json();
-      
-      // Debug token format
-      console.log("Received token:", token ? "Yes (length: " + token.length + ")" : "No");
 
       // Store auth data
       if (token) {
-        localStorage.setItem("token", token);
-        sessionStorage.setItem("auth_user", JSON.stringify(user));
-        console.log("Token saved in localStorage");
+        localStorage.setItem(TOKEN_CACHE_KEY, token);
+        sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
       } else {
+        setError("No token received from server");
         throw new Error("No token received from server");
       }
       
       setUser(user);
+      
+      // Redirect based on role and profile completion
+      if (user.profile) {
+        router.push(user.role === 'MENTOR' ? '/dashboard/mentor' : '/dashboard/mentee');
+      } else {
+        router.push(`/onboarding/${user.role.toLowerCase()}`);
+      }
+      
       return user;
+    } catch (error: any) {
+      setError(error.message || "Login failed");
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -190,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Register function
   const register = async (userData: any) => {
     setIsLoading(true)
+    setError(null)
     
     try {
       const uniqueUsername = userData.username || `${userData.fullName.toLowerCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-6)}`
@@ -208,14 +202,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Registration failed")
+        const errorData = await response.json()
+        setError(errorData.error || "Registration failed")
+        throw new Error(errorData.error || "Registration failed")
       }
       
       const data = await response.json()
+      
+      // Auto login after successful registration
+      if (data.token) {
+        localStorage.setItem(TOKEN_CACHE_KEY, data.token)
+        sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
+        setUser(data.user)
+        
+        // Redirect to onboarding
+        router.push(`/onboarding/${data.user.role.toLowerCase()}`)
+      }
+      
       return data
-    } catch (error) {
-      console.error("Registration error:", error)
+    } catch (error: any) {
+      setError(error.message || "Registration failed")
       throw error
     } finally {
       setIsLoading(false)
@@ -241,6 +247,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { available: false, error: "Failed to check username availability" }
     }
   }
+  
+  // Update user function
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData }
+      setUser(updatedUser)
+      sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(updatedUser))
+    }
+  }
+  
+  // Clear error state
+  const clearError = () => setError(null)
 
   return (
     <AuthContext.Provider
@@ -248,9 +266,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        error,
         login,
         register,
-        logout
+        logout,
+        clearError,
+        updateUser,
+        checkUsernameAvailability
       }}
     >
       {children}

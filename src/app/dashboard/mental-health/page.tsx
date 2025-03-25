@@ -38,74 +38,54 @@ export default function MentalHealthPage() {
                       <div className="bg-primary/10 p-4 rounded-full inline-flex">
                         <Brain className="h-8 w-8 text-primary" />
                       </div>
-                      <h3 className="font-medium text-lg">Mental Health Assistant</h3>
-                      <p className="text-muted-foreground max-w-md">
-                        Chat with our AI assistant for motivational support, stress management tips, and self-care advice.
+                      <h3 className="text-lg font-medium">Mental Health Assistant</h3>
+                      <p className="text-muted-foreground max-w-sm">
+                        Chat with our AI assistant for support with stress management, motivation, 
+                        and maintaining mental wellness during your mentorship journey.
                       </p>
                     </div>
                   </motion.div>
                 )}
 
-                {messages.map((message, index) => (
-                  <motion.div
+                {messages.map((message) => (
+                  <div
                     key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
-                    {message.role !== "user" && (
-                      <Avatar className="h-8 w-8 mr-2">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt="AI Assistant" />
-                        <AvatarFallback>AI</AvatarFallback>
-                      </Avatar>
-                    )}
-
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                        message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                      className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                        message.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted"
                       }`}
                     >
-                      {message.content}
+                      <p className="text-sm">{message.content}</p>
                     </div>
-
-                    {message.role === "user" && (
-                      <Avatar className="h-8 w-8 ml-2">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                        <AvatarFallback>JD</AvatarFallback>
-                      </Avatar>
-                    )}
-                  </motion.div>
+                  </div>
                 ))}
-
+                
                 {isLoading && (
                   <div className="flex justify-start">
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="AI Assistant" />
-                      <AvatarFallback>AI</AvatarFallback>
-                    </Avatar>
-                    <div className="max-w-[80%] rounded-lg px-4 py-2 bg-muted">
-                      <div className="flex space-x-1">
-                        <div className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce"></div>
-                        <div className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce delay-75"></div>
-                        <div className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce delay-150"></div>
-                      </div>
+                    <div className="rounded-lg px-4 py-2 max-w-[80%] bg-muted">
+                      <p className="text-sm">Thinking...</p>
                     </div>
                   </div>
                 )}
               </div>
-
-              <form onSubmit={handleSubmit} className="flex space-x-2">
-                <Input
-                  value={input}
-                  onChange={handleInputChange}
-                  placeholder="Type your message..."
-                  className="flex-1"
-                  disabled={isLoading}
-                />
-                <Button type="submit" disabled={isLoading}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send
+              
+              <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+                <div className="relative flex-1">
+                  <Input
+                    value={input}
+                    onChange={handleInputChange}
+                    placeholder="Type a message..."
+                    className="pr-10"
+                  />
+                </div>
+                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                  <Send className="h-4 w-4" />
                 </Button>
               </form>
             </CardContent>

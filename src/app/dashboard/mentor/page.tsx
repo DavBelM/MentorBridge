@@ -67,6 +67,12 @@ export default function MentorDashboardPage() {
         setUpcomingSessions(dashboardData.upcomingSessions)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
+        // Return default/fallback data
+        return {
+          stats: { totalMentees: 0, totalSessions: 0, averageRating: 0, upcomingSessionsCount: 0 },
+          recentMentees: [],
+          upcomingSessions: []
+        }
       } finally {
         setIsLoading(false)
       }

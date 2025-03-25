@@ -1,66 +1,67 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { get } from "@/lib/api-client"
 
-interface ProtectedRouteProps {
+type ProtectedRouteProps = {
   children: React.ReactNode
-  requireProfile?: boolean
 }
 
-export function ProtectedRoute({ children, requireProfile = false }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, user } = useAuth()
-  const [hasProfile, setHasProfile] = useState<boolean | null>(null)
-  const [checkingProfile, setCheckingProfile] = useState(false)
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
 
-  // Check if user has a profile
   useEffect(() => {
-    if (isAuthenticated && user?.id && requireProfile) {
-      const checkUserProfile = async () => {
-        setCheckingProfile(true)
-        try {
-          const response = await get("/api/profile/check") as { hasProfile: boolean }
-          const { hasProfile } = response
-          setHasProfile(hasProfile)
-          
-          if (!hasProfile) {
-            router.push("/profile/setup")
-          }
-        } catch (error) {
-          console.error("Error checking profile:", error)
-          setHasProfile(false)
-        } finally {
-          setCheckingProfile(false)
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      try {
+        // Get token from localStorage - use the same key as login-form.tsx
+        const token = localStorage.getItem('authToken')
+        
+        if (!token) {
+          // No token found, redirect to login
+          router.replace('/login')
+          return
         }
-      }
-      
-      checkUserProfile()
-    }
-  }, [isAuthenticated, requireProfile, router, user?.id])
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login")
+        // Verify token is valid by making a request to the API
+        const response = await fetch('/api/auth/verify', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          // Token is invalid, clear it and redirect
+          localStorage.removeItem('authToken')
+          router.replace('/login')
+          return
+        }
+
+        // User is authenticated
+        setIsAuthenticated(true)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.replace('/login')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [isAuthenticated, isLoading, router])
-  
-  if (isLoading || (requireProfile && checkingProfile)) {
+
+    checkAuth()
+  }, [router])
+
+  // Show loading state while checking auth
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center">
         <LoadingSpinner />
       </div>
     )
   }
 
-  // Only show content if user is authenticated and (no profile required or has profile)
-  if (isAuthenticated && (!requireProfile || hasProfile === true)) {
-    return <>{children}</>
-  }
-  
-  return null // Will redirect in useEffect
+  // Only render children if authenticated
+  return isAuthenticated ? <>{children}</> : null
 }

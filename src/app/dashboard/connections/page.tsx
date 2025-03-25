@@ -2,22 +2,27 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation" // Make sure to import from next/navigation, not next/router
 import { useAuth } from "@/context/auth-context"
-import { get, post } from "@/lib/api-client"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+import { get } from "@/lib/api-client"
+import { useToast } from "@/components/ui/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { useRouter } from "next/router"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type Connection = {
   id: number
+  status: string
+  createdAt: string
+  updatedAt: string
   mentor: {
     id: number
     fullname: string
     profile: {
       profilePicture: string | null
+      bio: string | null
     }
   }
   mentee: {
@@ -25,16 +30,18 @@ type Connection = {
     fullname: string
     profile: {
       profilePicture: string | null
+      bio: string | null
     }
   }
-  status: string
 }
 
 export default function ConnectionsPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [connections, setConnections] = useState<Connection[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
+  const [activeTab, setActiveTab] = useState("all")
+  const router = useRouter() // This should work now
 
   useEffect(() => {
     async function fetchConnections() {
@@ -44,141 +51,224 @@ export default function ConnectionsPage() {
         setConnections(connections)
       } catch (error) {
         console.error('Error fetching connections:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load connections",
+          variant: "destructive"
+        })
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchConnections()
-  }, [])
+    if (user) {
+      fetchConnections()
+    }
+  }, [user, toast])
 
-  async function manageConnection(connectionId: number, action: 'accept' | 'reject') {
-    try {
-      await post('/api/connections/manage', { connectionId, action })
-      setConnections(connections.filter(connection => connection.id !== connectionId))
-    } catch (error) {
-      console.error('Error managing connection:', error)
-      alert('Failed to manage connection')
+  // Filter connections based on active tab
+  const filteredConnections = connections.filter(connection => {
+    if (activeTab === "all") return true
+    return connection.status.toLowerCase() === activeTab
+  })
+
+  // Determine if the user is the mentor or mentee in a connection
+  const getOtherParty = (connection: Connection) => {
+    if (user?.role === "MENTOR") {
+      return connection.mentee
+    } else {
+      return connection.mentor
     }
   }
 
-  const isMentor = user?.role === 'MENTOR'
-
   return (
-    <ProtectedRoute>
-      <div className="container py-10">
-        <h1 className="text-3xl font-bold mb-6">Manage Connections</h1>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader className="h-[100px] bg-muted"></CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="h-4 bg-muted rounded"></div>
-                  <div className="h-4 bg-muted rounded w-2/3"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : connections.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {connections.map((connection) => (
-              <Card key={connection.id} className="overflow-hidden">
-                <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage 
-                      src={isMentor 
-                        ? connection.mentee.profile?.profilePicture || ''
-                        : connection.mentor.profile?.profilePicture || ''
-                      } 
-                      alt={isMentor 
-                        ? connection.mentee.fullname
-                        : connection.mentor.fullname
-                      } 
-                    />
-                    <AvatarFallback>
-                      {(isMentor 
-                        ? connection.mentee.fullname
-                        : connection.mentor.fullname
-                      ).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+    <div className="container py-10">
+      <h1 className="text-3xl font-bold mb-6">My Connections</h1>
+      
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-8">
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="accepted">Active</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-muted"></div>
                   <div>
-                    <CardTitle className="text-xl">
-                      {isMentor 
-                        ? connection.mentee.fullname
-                        : connection.mentor.fullname
-                      }
-                    </CardTitle>
-                    <Badge variant={
-                      connection.status === 'pending' ? 'outline' :
-                      connection.status === 'accepted' ? 'default' : 'secondary'
-                    }>
-                      {connection.status.charAt(0).toUpperCase() + connection.status.slice(1)}
-                    </Badge>
+                    <div className="h-5 w-24 bg-muted rounded mb-1"></div>
+                    <div className="h-4 w-16 bg-muted rounded"></div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-12 bg-muted rounded mb-4"></div>
+                <div className="flex justify-between">
+                  <div className="h-5 w-20 bg-muted rounded"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredConnections.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredConnections.map((connection) => {
+            const otherParty = getOtherParty(connection)
+            
+            return (
+              <Card key={connection.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Avatar>
+                        <AvatarImage src={otherParty.profile?.profilePicture || ''} />
+                        <AvatarFallback>{otherParty.fullname.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg">{otherParty.fullname}</CardTitle>
+                        <Badge variant={
+                          connection.status === 'accepted' ? 'default' : 
+                          connection.status === 'pending' ? 'secondary' : 'outline'
+                        }>
+                          {connection.status}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {connection.status === 'pending' && (
-                    <p className="text-sm text-muted-foreground mb-4">
-                      This connection request is pending your approval.
-                    </p>
-                  )}
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                    {otherParty.profile?.bio || 'No bio provided'}
+                  </p>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    Connected since: {new Date(connection.createdAt).toLocaleDateString()}
+                  </p>
+                  
+                  <div className="flex gap-3 mt-4">
+                    {connection.status === 'accepted' && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => router.push(`/dashboard/messages?userId=${otherParty.id}`)}
+                        >
+                          Message
+                        </Button>
+                        
+                        {user?.role === 'MENTEE' && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => router.push(`/dashboard/sessions/schedule?mentorId=${otherParty.id}`)}
+                          >
+                            Schedule Session
+                          </Button>
+                        )}
+                      </>
+                    )}
+                    
+                    {connection.status === 'pending' && user?.role === 'MENTOR' && (
+                      <>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          onClick={async () => {
+                            try {
+                              await fetch(`/api/connections/${connection.id}/accept`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' }
+                              });
+                              
+                              // Update local state to reflect the change
+                              setConnections(prev => 
+                                prev.map(c => c.id === connection.id 
+                                  ? {...c, status: 'accepted'} 
+                                  : c
+                                )
+                              );
+                              
+                              toast({
+                                title: "Connection accepted",
+                                description: "You are now connected with this mentee"
+                              });
+                            } catch (error) {
+                              console.error('Error accepting connection:', error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to accept connection",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          Accept
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={async () => {
+                            try {
+                              await fetch(`/api/connections/${connection.id}/reject`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' }
+                              });
+                              
+                              // Update local state to reflect the change
+                              setConnections(prev => 
+                                prev.map(c => c.id === connection.id 
+                                  ? {...c, status: 'rejected'} 
+                                  : c
+                                )
+                              );
+                              
+                              toast({
+                                title: "Connection rejected",
+                                description: "You have rejected this connection request"
+                              });
+                            } catch (error) {
+                              console.error('Error rejecting connection:', error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to reject connection",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          Decline
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CardContent>
-                <CardFooter className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-                  {connection.status === 'pending' && (
-                    <>
-                      <Button 
-                        onClick={() => manageConnection(connection.id, 'accept')} 
-                        className="w-full sm:w-auto"
-                      >
-                        Accept
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        onClick={() => manageConnection(connection.id, 'reject')}
-                        className="w-full sm:w-auto"
-                      >
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                  {connection.status === 'accepted' && (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        className="w-full sm:w-auto"
-                        onClick={() => router.push(`/dashboard/messages?thread=${connection.id}`)}
-                      >
-                        Message
-                      </Button>
-                      <Button className="w-full sm:w-auto">
-                        Schedule Session
-                      </Button>
-                    </>
-                  )}
-                </CardFooter>
               </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-medium mb-2">No connections found</h3>
-            <p className="text-muted-foreground mb-6">
-              {isMentor 
-                ? "You don't have any mentee connection requests yet."
-                : "You don't have any mentor connections yet."
-              }
-            </p>
-            {!isMentor && (
-              <Button asChild>
-                <a href="/mentors">Find a Mentor</a>
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-    </ProtectedRoute>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-12 border rounded-lg">
+          <h3 className="text-xl font-medium mb-2">No connections found</h3>
+          <p className="text-muted-foreground mb-6">
+            {activeTab !== "all" 
+              ? `You don't have any ${activeTab} connections at the moment.`
+              : user?.role === "MENTEE"
+                ? "Connect with mentors to start your learning journey."
+                : "Wait for mentees to connect with you or invite them to join."}
+          </p>
+          
+          {user?.role === "MENTEE" && (
+            <Button onClick={() => router.push('/dashboard/mentors')}>
+              Find Mentors
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

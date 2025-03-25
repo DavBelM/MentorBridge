@@ -12,7 +12,9 @@ import {
   BookOpen, 
   Settings,
   User,
-  LogOut
+  Search,
+  LogOut,
+  UserCheck
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,21 +29,39 @@ export default function DashboardSidebar() {
   const navItems = [
     {
       title: "Dashboard",
-      href: "/dashboard",
+      href: isMentor ? "/dashboard/mentor" : isMentee ? "/dashboard/mentee" : "/dashboard",
       icon: Home,
       show: true
     },
     {
+      title: "My Profile",
+      href: "/dashboard/profile",
+      icon: User,
+      show: true
+    },
+    {
+      title: "Find Mentors",
+      href: "/dashboard/mentors",
+      icon: Search,
+      show: isMentee
+    },
+    {
       title: "My Mentees",
       href: "/dashboard/mentees",
-      icon: Users,
+      icon: UserCheck,
       show: isMentor
     },
     {
       title: "My Mentors",
-      href: "/dashboard/mentors",
+      href: "/dashboard/my-mentors",
       icon: Users,
       show: isMentee
+    },
+    {
+      title: "Connections",
+      href: "/dashboard/connections",
+      icon: Users,
+      show: true
     },
     {
       title: "Sessions",
@@ -62,14 +82,14 @@ export default function DashboardSidebar() {
       show: true
     },
     {
-      title: "Profile",
-      href: "/profile",
-      icon: User,
+      title: "Mental Health",
+      href: "/dashboard/mental-health",
+      icon: MessageSquare,
       show: true
     },
     {
       title: "Settings",
-      href: "/settings",
+      href: "/dashboard/settings",
       icon: Settings,
       show: true
     }

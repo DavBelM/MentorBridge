@@ -157,14 +157,11 @@ export default function EditResourcePage() {
   }
   
   const resourceTypes = [
-    { value: "article", label: "Article" },
-    { value: "video", label: "Video" },
-    { value: "book", label: "Book" },
-    { value: "podcast", label: "Podcast" },
-    { value: "course", label: "Course" },
-    { value: "website", label: "Website" },
-    { value: "tool", label: "Tool" },
-    { value: "other", label: "Other" },
+    { value: "all", label: "All Types" }, // Changed from empty string to "all"
+    { value: "article", label: "Articles" },
+    { value: "video", label: "Videos" },
+    { value: "book", label: "Books" },
+    { value: "website", label: "Websites" },
   ];
   
   // Convert collections for multi-select
@@ -308,7 +305,7 @@ export default function EditResourcePage() {
                           options={collectionOptions}
                           selected={field.value || []}
                           onChange={field.onChange}
-                          placeholder="Select collections"
+                          placeholder={isLoadingCollections ? "Loading collections..." : "Select collections"}
                           disabled={isLoadingCollections}
                         />
                       </FormControl>

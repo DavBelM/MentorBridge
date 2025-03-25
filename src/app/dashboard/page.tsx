@@ -1,18 +1,9 @@
 "use client"
 
-import { useEffect, Suspense } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
-import { DashboardShell } from "@/components/dashboard/dashboard-shell"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { RecentMentors } from "@/components/dashboard/recent-mentors"
-import { UpcomingSessions } from "@/components/dashboard/upcoming-sessions"
-import { RecommendedResources } from "@/components/dashboard/recommended-resources"
-import { MentalHealthWidget } from "@/components/dashboard/mental-health-widget"
-import { DashboardTransition } from "@/components/dashboard/dashboard-transition"
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -30,47 +21,19 @@ export default function DashboardPage() {
     }
   }, [user, isLoading, router])
   
-  // If we're in the process of redirecting or loading user data,
-  // show a loading state
+  // Show loading state while redirecting
   if (isLoading || (user && (user.role === 'MENTOR' || user.role === 'MENTEE'))) {
-    return (
-      <ProtectedRoute requireProfile={true}>
-        <DashboardShell>
-          <DashboardSkeleton />
-        </DashboardShell>
-      </ProtectedRoute>
-    )
+    return <DashboardSkeleton />
   }
   
-  // If no role-specific redirection applies, show the generic dashboard
+  // Fallback generic dashboard for users without specific roles
   return (
-    <ProtectedRoute requireProfile={true}>
-      <DashboardShell>
-        <Suspense fallback={<DashboardSkeleton />}>
-          <DashboardTransition>
-            <DashboardHeader heading="Dashboard" text="Manage your mentorship journey and access resources." />
-
-            <div className="grid gap-6">
-              <DashboardStats />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <RecentMentors />
-                <UpcomingSessions />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2">
-                  <RecommendedResources />
-                </div>
-                <div>
-                  <MentalHealthWidget />
-                </div>
-              </div>
-            </div>
-          </DashboardTransition>
-        </Suspense>
-      </DashboardShell>
-    </ProtectedRoute>
+    <div>
+      <h1 className="text-3xl font-bold mb-6">Welcome to MentorBridge</h1>
+      <p className="text-muted-foreground mb-6">
+        Please complete your profile setup to access role-specific features.
+      </p>
+    </div>
   )
 }
 

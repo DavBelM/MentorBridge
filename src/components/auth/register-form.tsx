@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/context/auth-context" // Import the auth hook
 import { LoadingButton } from "@/components/ui/loading-button"
+import { toast } from "@/components/ui/use-toast"
 
 const registerFormSchema = z
   .object({
@@ -65,21 +66,44 @@ export function RegisterForm() {
     setIsLoading(true)
 
     try {
-      // Use the register function from the auth context
-      await register({
-        fullName: data.fullName,
-        username: data.username,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-      })
+      // Making direct API call instead of using context
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullname: data.fullName,
+          username: data.username,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+        }),
+      });
       
-      // If registration is successful, redirect to profile setup
-      router.push("/profile/setup")
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to register');
+      }
+      
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created. Redirecting to profile setup...",
+      });
+      
+      // Redirect to profile setup
+      router.push("/profile/setup");
       
     } catch (error) {
       console.error(error)
       const errorMessage = error instanceof Error ? error.message : "Failed to register"
+      
+      toast({
+        title: "Registration Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
       
       // Set form error
       form.setError("root", {

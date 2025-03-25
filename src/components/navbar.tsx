@@ -62,9 +62,7 @@ export function Navbar() {
                 <Link href="/features/mentorship" className="text-sm font-medium hover:text-primary transition-colors">
                   Find Mentors
                 </Link>
-                <Link href="/features/resources" className="text-sm font-medium hover:text-primary transition-colors">
-                  Resources
-                </Link>
+                
                 <Link href="/features/mental-health" className="text-sm font-medium hover:text-primary transition-colors">
                   Mental Health
                 </Link>

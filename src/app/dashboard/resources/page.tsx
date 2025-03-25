@@ -22,7 +22,7 @@ import {
   ExternalLink,
   FolderPlus,
 } from "lucide-react"
-
+import { useToast } from "@/components/ui/use-toast"
 type Resource = {
   id: number
   title: string
@@ -65,6 +65,7 @@ type Collection = {
 export default function ResourcesPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { toast } = useToast()
   
   const [resources, setResources] = useState<Resource[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
@@ -103,6 +104,11 @@ export default function ResourcesPage() {
         setResources(resources);
       } catch (error) {
         console.error('Error fetching resources:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load resources",
+          variant: "destructive",
+        });
       } finally {
         setIsLoadingResources(false);
       }
@@ -160,7 +166,7 @@ export default function ResourcesPage() {
   }
   
   const resourceTypes = [
-    { value: "", label: "All Types" },
+    { value: "all", label: "All Types" }, // Fixed - using "all" instead of empty string
     { value: "article", label: "Articles" },
     { value: "video", label: "Videos" },
     { value: "book", label: "Books" },

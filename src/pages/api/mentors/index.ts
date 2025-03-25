@@ -1,5 +1,5 @@
 // src/pages/api/mentors/index.ts
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client/edge';
 import { withAccelerate } from '@prisma/extension-accelerate';
 import { authMiddleware } from '@/lib/middleware';
@@ -12,24 +12,67 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const { search = '', page = '1', limit = '10' } = req.query;
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { 
+      search = '', 
+      page = '1', 
+      limit = '10',
+      skills = '',
+      availability = ''
+    } = req.query;
+    
     const pageNum = parseInt(page as string, 10) || 1;
     const limitNum = parseInt(limit as string, 10) || 10;
     const skip = (pageNum - 1) * limitNum;
 
+    // Build where clause
+    const whereClause: any = {
+      role: 'MENTOR',
+      OR: []
+    };
+    
+    // Add search conditions if provided
+    if (search) {
+      whereClause.OR = [
+        { fullname: { contains: search as string, mode: 'insensitive' } },
+        { username: { contains: search as string, mode: 'insensitive' } },
+        { profile: { bio: { contains: search as string, mode: 'insensitive' } } },
+      ];
+    }
+    
+    // Add skills filter if provided
+    if (skills) {
+      whereClause.profile = {
+        ...whereClause.profile,
+        skills: {
+          contains: skills as string,
+          mode: 'insensitive',
+        }
+      };
+    }
+    
+    // Add availability filter if provided
+    if (availability) {
+      whereClause.profile = {
+        ...whereClause.profile,
+        availability: {
+          contains: availability as string,
+          mode: 'insensitive',
+        }
+      };
+    }
+
     const mentors = await prisma.user.findMany({
-      where: {
-        role: 'MENTOR',
-        OR: [
-          { fullname: { contains: search as string, mode: 'insensitive' } },
-          { username: { contains: search as string, mode: 'insensitive' } },
-          { profile: { bio: { contains: search as string, mode: 'insensitive' } } },
-        ],
-      },
+      where: whereClause,
       select: {
         id: true,
         fullname: true,
         username: true,
+        email: true,
+        role: true,
         profile: {
           select: {
             bio: true,
@@ -40,6 +83,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             availability: true,
             linkedin: true,
             twitter: true,
+            interests: true
           },
         },
       },
@@ -49,14 +93,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     const totalCount = await prisma.user.count({
-      where: {
-        role: 'MENTOR',
-        OR: [
-          { fullname: { contains: search as string, mode: 'insensitive' } },
-          { username: { contains: search as string, mode: 'insensitive' } },
-          { profile: { bio: { contains: search as string, mode: 'insensitive' } } },
-        ],
-      },
+      where: whereClause,
     });
 
     res.status(200).json({
@@ -66,6 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         pages: Math.ceil(totalCount / limitNum),
         page: pageNum,
         limit: limitNum,
+        totalPages: Math.ceil(totalCount / limitNum)
       },
     });
   } catch (error) {

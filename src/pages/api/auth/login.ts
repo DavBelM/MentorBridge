@@ -1,70 +1,110 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { PrismaClient } from '@prisma/client/edge'
+import { withAccelerate } from '@prisma/extension-accelerate'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import { ApiResponse } from '@/types/api' 
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient().$extends(withAccelerate())
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
+// Standard response type
+type LoginResponse = ApiResponse<{
+  user: {
+    id: number;
+    fullname: string;
+    email: string;
+    role: string;
+  };
+  token: string;
+}>;
+
+export default async function handler(
+  req: NextApiRequest, 
+  res: NextApiResponse<LoginResponse>
+) {
+  // Only allow POST method
+  if (req.method !== 'POST') {
+    return res.status(405).json({ 
+      success: false, 
+      error: 'Method not allowed' 
+    });
+  }
+
+  try {
     const { email, password } = req.body;
+
+    // Field validation
+    const fieldErrors: Record<string, string> = {};
     
-    try {
-      // Validate input
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
-      }
-      
-      // Find user by email
-      const user = await prisma.user.findUnique({
-        where: { email },
-        select: {
-          id: true,
-          email: true,
-          password: true,
-          fullname: true,
-          username: true,
-          role: true,
-        },
+    if (!email) fieldErrors.email = 'Email is required';
+    if (!password) fieldErrors.password = 'Password is required';
+    
+    if (Object.keys(fieldErrors).length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Validation failed', 
+        fieldErrors 
       });
-      
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid email or password' });
-      }
-      
-      // Compare passwords
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      
-      if (!isPasswordValid) {
-        return res.status(401).json({ error: 'Invalid email or password' });
-      }
-      
-      // Create a JWT token
-      const token = jwt.sign(
-        { 
-          userId: user.id,
-          role: user.role
-        },
-        process.env.JWT_SECRET || 'fallback-secret-please-change',
-        { expiresIn: '7d' }
-      );
-      
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
-      
-      console.log("Login successful for user ID:", user.id);
-      console.log("Token generated successfully");
-      
-      // Return user data and token
-      res.status(200).json({
-        user: userWithoutPassword,
-        token
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ error: 'An error occurred during login' });
     }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
+
+    // Find user by email
+    const user = await prisma.user.findFirst({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid email or password' 
+      });
+    }
+
+    // Verify password
+    const passwordValid = await bcrypt.compare(password, user.password);
+
+    if (!passwordValid) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid email or password' 
+      });
+    }
+
+    // Generate JWT token
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Server configuration error' 
+      });
+    }
+
+    const token = jwt.sign(
+      { 
+        userId: user.id,
+        email: user.email,
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Return successful response
+    return res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          fullname: user.fullname,
+          email: user.email,
+          role: user.role,
+        },
+        token,
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'An error occurred during login' 
+    });
   }
 }

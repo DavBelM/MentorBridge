@@ -1,70 +1,58 @@
-// Helper for making authenticated API requests
+// This is a utility to make authenticated API calls
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+import { toast } from "@/components/ui/use-toast";
 
-// Get the JWT token from localStorage
-const getToken = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
-  }
-  return null;
+// Utility function to get token from localStorage
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('authToken');
 };
 
-// Create headers with auth token
-const getHeaders = (contentType = 'application/json') => {
-  const headers: Record<string, string> = {};
+// API client function with authentication
+export async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+  const token = getAuthToken();
   
-  // Only set Content-Type if it's not FormData (let the browser set it)
-  if (contentType) {
-    headers['Content-Type'] = contentType;
+  // Modified to be more precise with the endpoints that don't need authentication
+  const isAuthEndpoint = 
+    endpoint.includes('/api/auth/login') || 
+    endpoint.includes('/api/auth/register') || 
+    endpoint.includes('/api/auth/reset-password');
+  
+  // Only redirect if not an auth endpoint and no token
+  if (!token && !isAuthEndpoint) {
+    window.location.href = '/login';
+    return null;
   }
   
-  const token = getToken();
+  // Add authorization header if token exists
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  };
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   
-  return headers;
-};
-
-// Generic fetch wrapper with auth
-export async function apiClient<T>(
-  endpoint: string, 
-  { body, headers, ...customConfig }: RequestInit & { body?: any } = {}
-): Promise<T> {
-  const isFormData = body instanceof FormData;
-  
-  // Get token from localStorage
-  const token = typeof window !== 'undefined' 
-    ? localStorage.getItem('token') 
-    : null;
-  
-  const config: RequestInit = {
-    method: 'GET',
-    ...customConfig,
-    headers: {
-      // For non-FormData requests
-      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
-      // Add authorization header if token exists
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...headers,
-    },
-  };
-  
-  // Handle body based on type
-  if (body) {
-    if (isFormData) {
-      config.body = body;
-    } else {
-      config.body = JSON.stringify(body);
-    }
-  }
-  
   try {
-    console.log(`Fetching ${endpoint} with auth:`, token ? 'Yes' : 'No');
+    const response = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
     
-    const response = await fetch(`${endpoint}`, config);
+    // If unauthorized, clear token and redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/login?sessionExpired=true';
+      return null;
+    }
     
+    // For successful requests with no content
+    if (response.status === 204) {
+      return {} as T;
+    }
+    
+    // Handle errors
     if (!response.ok) {
       // Try to parse error response as JSON
       const errorData = await response.json().catch(() => ({}));
@@ -76,9 +64,15 @@ export async function apiClient<T>(
       return {} as T;
     }
     
+    // For JSON responses
     return await response.json();
   } catch (error) {
-    console.error("API request failed:", error);
+    console.error(`API Error (${endpoint}):`, error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Something went wrong",
+      variant: "destructive"
+    });
     throw error;
   }
 }

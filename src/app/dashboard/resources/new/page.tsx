@@ -1,7 +1,7 @@
 // src/app/dashboard/resources/new/page.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -58,7 +58,7 @@ export default function AddResourcePage() {
   });
   
   // Fetch user's collections on mount
-  useState(() => {
+  useEffect(() => {
     async function fetchCollections() {
       setIsLoadingCollections(true);
       try {
@@ -77,7 +77,7 @@ export default function AddResourcePage() {
     }
     
     fetchCollections();
-  });
+  }, []);
   
   // Handle form submission
   async function onSubmit(values: FormValues) {
@@ -238,7 +238,8 @@ export default function AddResourcePage() {
                           options={collectionOptions}
                           selected={field.value || []}
                           onChange={field.onChange}
-                          placeholder="Select collections"
+                          placeholder={isLoadingCollections ? "Loading collections..." : "Select collections"}
+                          disabled={isLoadingCollections}
                         />
                       </FormControl>
                       <FormDescription>
