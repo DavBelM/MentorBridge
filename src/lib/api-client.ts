@@ -81,17 +81,37 @@ export async function apiClient<T = any>(endpoint: string, options: RequestInit 
 export const get = <T>(endpoint: string, config?: RequestInit) => 
   apiClient<T>(endpoint, { ...config, method: 'GET' });
 
-// Update post to handle FormData correctly
+// Update the post function to handle FormData correctly
 export const post = <T>(endpoint: string, body: any, config?: RequestInit) => {
-  const isFormData = body instanceof FormData;
+  // Check if body is FormData
+  if (body instanceof FormData) {
+    // For FormData, don't set content-type - browser will set it with boundary
+    return fetch(endpoint, {
+      method: 'POST',
+      body: body, // Use FormData directly
+      credentials: 'include',
+      ...config,
+    }).then(async (response) => {
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      return response.json();
+    });
+  }
   
+  // Regular JSON request
   return apiClient<T>(endpoint, { 
     ...config, 
     method: 'POST', 
-    // Don't manually set the content type for FormData
-    // The browser will set the appropriate boundary
-    headers: isFormData ? {} : { 'Content-Type': 'application/json' },
-    body 
+    body: JSON.stringify(body) 
   });
 }
 
@@ -114,6 +134,28 @@ export async function patch<T>(url: string, data: any): Promise<T> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// Add a patch function that handles FormData
+export const patchFormData = async <T>(endpoint: string, formData: FormData): Promise<T> => {
+  const response = await fetch(endpoint, {
+    method: 'PATCH',
+    body: formData,
+    credentials: 'include',
+  });
+  
+  if (!response.ok) {
+    let errorMessage = `HTTP error! status: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } catch (e) {
+      errorMessage = response.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
   
   return response.json();

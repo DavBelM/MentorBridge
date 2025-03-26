@@ -16,7 +16,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = parseInt(req.user.id, 10);
     const isMentor = req.user.role === 'MENTOR';
     
     // Get all connections for the user that have messages
@@ -82,14 +82,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Transform connections into threads
     const threads = connections
-      .filter(connection => connection.messages.length > 0) // Only include connections with messages
       .map(connection => ({
         id: connection.id,
         contact: isMentor ? connection.menteeUser : connection.mentorUser,
-        lastMessage: connection.messages[0],
+        lastMessage: connection.messages[0] || null, // Allow null for no messages
         unreadCount: connection._count.messages,
         updatedAt: connection.messages[0]?.createdAt || connection.updatedAt,
-      }));
+        hasMessages: connection.messages.length > 0,
+      }))
+      // Sort connections with messages first, then by last update time
+      .sort((a, b) => {
+        if (a.hasMessages && !b.hasMessages) return -1;
+        if (!a.hasMessages && b.hasMessages) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
 
     return res.status(200).json({ threads });
   } catch (error) {

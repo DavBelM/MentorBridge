@@ -160,58 +160,52 @@ export default function EditResourcePage() {
     }
   };
   
-  // Modified onSubmit to handle file uploads
-  async function onSubmit(values: FormValues) {
-    setIsLoading(true);
+  // Update onSubmit function to use the new patchFormData utility
+
+async function onSubmit(values: FormValues) {
+  setIsLoading(true);
+  
+  try {
+    // Create FormData for file uploads
+    const formData = new FormData();
+    formData.append("title", values.title);
+    if (values.description) formData.append("description", values.description);
+    formData.append("type", values.type);
+    formData.append("isPublic", String(values.isPublic));
     
-    try {
-      // Create FormData for file uploads
-      const formData = new FormData();
-      formData.append("title", values.title);
-      if (values.description) formData.append("description", values.description);
-      formData.append("type", values.type);
-      formData.append("isPublic", String(values.isPublic));
-      if (values.collectionIds) {
-        formData.append("collectionIds", JSON.stringify(values.collectionIds));
-      }
-      
-      // Append either URL or file
-      if (values.url) {
-        formData.append("url", values.url);
-      }
-      
-      if (values.fileUpload) {
-        formData.append("file", values.fileUpload);
-      }
-      
-      // Use fetch directly for FormData
-      const response = await fetch(`/api/resources/${resourceId}`, {
-        method: "PATCH",
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update resource");
-      }
-      
-      toast({
-        title: "Success",
-        description: "Resource updated successfully",
-      });
-      
-      router.push(`/dashboard/resources/${resourceId}`);
-    } catch (error) {
-      console.error("Error updating resource:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update resource",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (values.collectionIds && values.collectionIds.length > 0) {
+      formData.append("collectionIds", JSON.stringify(values.collectionIds));
     }
+    
+    // Append either URL or file
+    if (values.url) {
+      formData.append("url", values.url);
+    }
+    
+    if (values.fileUpload) {
+      formData.append("file", values.fileUpload);
+    }
+    
+    // Use our custom function for FormData
+    const result = await patchFormData(`/api/resources/${resourceId}`, formData);
+    
+    toast({
+      title: "Success",
+      description: "Resource updated successfully",
+    });
+    
+    router.push(`/dashboard/resources/${resourceId}`);
+  } catch (error) {
+    console.error("Error updating resource:", error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to update resource",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
   }
+}
   
   // Remove "all" from resource types for editing
   const resourceTypes = [
@@ -539,4 +533,21 @@ export default function EditResourcePage() {
       </div>
     </div>
   )
+}
+// Function to send PATCH requests with FormData
+async function patchFormData(url: string, formData: FormData) {
+  const response = await fetch(url, {
+    method: 'PATCH',
+    body: formData,
+    credentials: 'include',
+    // Don't set Content-Type header when sending FormData
+    // The browser will set it automatically with the correct boundary
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Request failed with status ${response.status}`);
+  }
+
+  return response.json();
 }

@@ -30,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return res.status(404).json({ error: 'Connection not found' });
       }
 
-      if (connection.mentorId !== userId && connection.menteeId !== userId) {
+      if (connection.mentorId !== Number(userId) && connection.menteeId !== Number(userId)) {
         return res.status(403).json({ error: 'You do not have access to this conversation' });
       }
 
@@ -59,9 +59,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       // Add cursor-based pagination if 'before' is provided
       if (before) {
-        queryParams.cursor = {
-          id: Number(before),
-        };
+        const beforeId = Number(before);
+        if (isNaN(beforeId)) {
+          return res.status(400).json({ error: 'Invalid before parameter' });
+        }
+        
+        queryParams.cursor = { id: beforeId };
         queryParams.skip = 1; // Skip the cursor message
       }
 
@@ -69,7 +72,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       // Mark messages as read if they are not from the current user
       const unreadMessageIds = messages
-        .filter(message => message.senderId !== userId && !message.read)
+        .filter(message => message.senderId !== Number(userId) && !message.read)
         .map(message => message.id);
 
       if (unreadMessageIds.length > 0) {
@@ -79,8 +82,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
 
+      // Add 'hasMore' flag to response
+      const totalCount = await prisma.message.count({
+        where: { connectionId: Number(connectionId) }
+      });
+
+      const hasMore = messages.length === limitNum && totalCount > limitNum;
+
       // Return messages in chronological order (oldest first)
-      return res.status(200).json({ messages: messages.reverse() });
+      return res.status(200).json({ 
+        messages: messages.reverse(),
+        hasMore,
+        totalCount
+      });
     } catch (error) {
       console.error('Error fetching messages:', error);
       return res.status(500).json({ error: 'Failed to fetch messages' });
@@ -95,7 +109,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       const { connectionId, content } = req.body;
-      const senderId = req.user.id;
+      const senderId = Number(req.user.id);
 
       if (!connectionId || !content) {
         return res.status(400).json({ error: 'Connection ID and content are required' });

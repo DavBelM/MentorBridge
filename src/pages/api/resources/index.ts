@@ -1,9 +1,19 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client/edge';
-import { withAccelerate } from '@prisma/extension-accelerate';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { PrismaClient } from '@prisma/client';
 import { getSession } from '@/lib/auth';
+import formidable from 'formidable';
+import path from 'path';
+import { mkdir } from 'fs/promises';
 
-const prisma = new PrismaClient().$extends(withAccelerate());
+// Don't parse body as JSON for POST requests (to handle FormData)
+export const config = {
+  api: {
+    bodyParser: (req: NextApiRequest) => req.method !== 'POST',
+  },
+};
+
+// Use regular PrismaClient for consistency
+const prisma = new PrismaClient();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Check authentication
@@ -12,12 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  // Handle GET request
+  // Handle GET request for listing resources
   if (req.method === 'GET') {
     try {
+      console.log("GET request to /api/resources with query:", req.query);
+      
       const { type, collection, search, page = '1', limit = '10' } = req.query;
-      const pageNum = parseInt(page as string);
-      const limitNum = parseInt(limit as string);
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 10;
       
       // Build query filters
       const whereClause: any = {
@@ -27,8 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ],
       };
       
-      // Add type filter
-      if (type) {
+      // Add type filter if it's not "all"
+      if (type && type !== "all") {
         whereClause.type = type;
       }
       
@@ -41,22 +53,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Add search filter
       if (search) {
-        whereClause.OR = whereClause.OR || [];
-        whereClause.OR.push(
-          {
-            title: {
-              contains: search as string,
-              mode: 'insensitive',
-            },
-          },
-          {
-            description: {
-              contains: search as string,
-              mode: 'insensitive',
-            },
-          }
-        );
+        whereClause.OR = [
+          { title: { contains: search as string, mode: 'insensitive' } },
+          { description: { contains: search as string, mode: 'insensitive' } },
+        ];
       }
+      
+      console.log("Using whereClause:", JSON.stringify(whereClause, null, 2));
       
       // Get resources with pagination
       const resources = await prisma.resource.findMany({
@@ -88,6 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         take: limitNum,
       });
       
+      console.log(`Found ${resources.length} resources`);
+      
       // Get total count for pagination
       const totalCount = await prisma.resource.count({
         where: whereClause,
@@ -108,60 +113,113 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   
-  // Handle POST request
+  // Handle POST request for creating a resource
   if (req.method === 'POST') {
-    try {
-      const { title, description, type, url, isPublic, collectionIds } = req.body;
-      
-      // Validate required fields
-      if (!title || !type) {
-        return res.status(400).json({ error: 'Title and type are required' });
-      }
-      
-      // Create resource
-      const resource = await prisma.resource.create({
-        data: {
-          title,
-          description,
-          type,
-          url,
-          isPublic: !!isPublic,
-          createdById: session.user.id,
-          ...(collectionIds && collectionIds.length > 0
-            ? {
-                collections: {
-                  connect: collectionIds.map((id: number) => ({ id })),
-                },
-              }
-            : {}),
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-              profile: {
+    // Create upload directory
+    const uploadDir = path.join(process.cwd(), 'public/uploads');
+    await mkdir(uploadDir, { recursive: true });
+    
+    const form = formidable({
+      maxFileSize: 10 * 1024 * 1024, // 10MB limit
+      uploadDir,
+      filename: (_name, _ext, part) => {
+        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        return `${session.user.id}-${uniqueSuffix}${path.extname(part.originalFilename || '')}`;
+      },
+    });
+    
+    return new Promise((resolve) => {
+      form.parse(req, async (err, fields, files) => {
+        if (err) {
+          console.error("Error parsing form data:", err);
+          res.status(400).json({ error: "Failed to parse form data" });
+          return resolve(null);
+        }
+        
+        try {
+          // Extract form fields
+          const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+          const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
+          const type = Array.isArray(fields.type) ? fields.type[0] : fields.type;
+          const isPublic = Array.isArray(fields.isPublic) 
+            ? fields.isPublic[0] === 'true' 
+            : fields.isPublic === 'true';
+          const url = Array.isArray(fields.url) ? fields.url[0] : fields.url;
+          
+          // Process collections
+          let collectionIds: number[] = [];
+          const collectionIdsStr = Array.isArray(fields.collectionIds) 
+            ? fields.collectionIds[0] 
+            : fields.collectionIds;
+            
+          if (collectionIdsStr) {
+            try {
+              collectionIds = JSON.parse(collectionIdsStr);
+            } catch (e) {
+              console.error("Error parsing collectionIds:", e);
+            }
+          }
+          
+          // Handle file upload
+          let fileUrl: string | null = null;
+          if (files.file) {
+            const file = Array.isArray(files.file) ? files.file[0] : files.file;
+            fileUrl = `/uploads/${path.basename(file.filepath)}`;
+          }
+          
+          // Validate required fields
+          if (!title || !type) {
+            res.status(400).json({ error: 'Title and type are required' });
+            return resolve(null);
+          }
+          
+          // Create resource
+          const resource = await prisma.resource.create({
+            data: {
+              title,
+              description: description || null,
+              type,
+              url: fileUrl || url || null,
+              isPublic: !!isPublic,
+              createdById: session.user.id,
+              ...(collectionIds.length > 0
+                ? {
+                    collections: {
+                      connect: collectionIds.map(id => ({ id })),
+                    },
+                  }
+                : {}),
+            },
+            include: {
+              createdBy: {
                 select: {
-                  profilePicture: true,
+                  id: true,
+                  fullname: true,
+                  username: true,
+                  profile: {
+                    select: {
+                      profilePicture: true,
+                    },
+                  },
+                },
+              },
+              collections: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
             },
-          },
-          collections: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
+          });
+          
+          res.status(201).json({ resource });
+        } catch (error) {
+          console.error('Error creating resource:', error);
+          res.status(500).json({ error: 'Failed to create resource' });
+        }
+        return resolve(null);
       });
-      
-      return res.status(201).json({ resource });
-    } catch (error) {
-      console.error('Error creating resource:', error);
-      return res.status(500).json({ error: 'Failed to create resource' });
-    }
+    });
   }
   
   // Handle unsupported methods

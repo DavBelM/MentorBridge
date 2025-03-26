@@ -75,57 +75,80 @@ export default function ResourcesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<string>("")
   const [selectedCollection, setSelectedCollection] = useState<string>("")
+  const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pagination, setPagination] = useState<any>(null)
   
   // Fetch resources
   useEffect(() => {
     async function fetchResources() {
-      setIsLoadingResources(true)
+      setIsLoadingResources(true);
+      setError(null);
+      
       try {
-        let url = '/api/resources?';
-        const params = new URLSearchParams();
-        
-        if (searchQuery) {
-          params.append('search', searchQuery);
-        }
-        
-        if (selectedType) {
-          params.append('type', selectedType);
-        }
-        
-        if (selectedCollection) {
-          params.append('collection', selectedCollection);
-        }
-        
-        if (activeTab === 'my') {
-          params.append('createdBy', user!.id.toString());
-        }
-        
-        const { resources } = await get<{ resources: Resource[] }>(`/api/resources?${params.toString()}`);
-        setResources(resources);
-      } catch (error) {
-        console.error('Error fetching resources:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load resources",
-          variant: "destructive",
+        console.log("Fetching resources with filters:", {
+          type: selectedType,
+          search: searchQuery,
         });
+        
+        // Build query string
+        const params = new URLSearchParams();
+        if (searchQuery) params.append('search', searchQuery);
+        if (selectedType && selectedType !== 'all') params.append('type', selectedType);
+        
+        const queryString = params.toString();
+        const endpoint = queryString ? `/api/resources?${queryString}` : '/api/resources';
+        
+        // Fetch directly to see detailed errors
+        const response = await fetch(endpoint, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          let errorMessage = `HTTP error! status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        console.log("Resources data:", data);
+        
+        if (Array.isArray(data.resources)) {
+          setResources(data.resources);
+          setPagination(data.pagination);
+        } else {
+          console.error("Invalid resources format:", data);
+          setError("Invalid data format from server");
+          setResources([]);
+        }
+      } catch (error) {
+        console.error("Error fetching resources:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
+        setResources([]);
       } finally {
         setIsLoadingResources(false);
       }
     }
-    
-    if (user) {
-      fetchResources();
-    }
-  }, [user, activeTab, searchQuery, selectedType, selectedCollection]);
+
+    fetchResources();
+  }, [searchQuery, selectedType, currentPage]);
   
   // Fetch collections
   useEffect(() => {
     async function fetchCollections() {
       setIsLoadingCollections(true)
       try {
-        const { collections } = await get<{ collections: Collection[] }>('/api/resource-collections');
-        setCollections(collections);
+        const response = await get<{ collections: Collection[] }>('/api/resource-collections');
+        if (response) {
+          setCollections(response.collections);
+        } else {
+          setCollections([]);
+        }
       } catch (error) {
         console.error('Error fetching collections:', error);
       } finally {
@@ -319,7 +342,27 @@ export default function ResourcesPage() {
                 <div className="py-12 text-center">
                   <p className="text-muted-foreground">Loading resources...</p>
                 </div>
-              ) : resources.length > 0 ? (
+              ) : error ? (
+                <div className="border rounded-lg p-8 text-center">
+                  <p className="text-destructive mb-4">{error}</p>
+                  <Button onClick={() => window.location.reload()}>
+                    Try Again
+                  </Button>
+                </div>
+              ) : resources.length === 0 ? (
+                <div className="py-12 text-center border rounded-md">
+                  <h3 className="text-xl font-medium mb-2">No resources found</h3>
+                  <p className="text-muted-foreground mb-6">
+                    {activeTab === 'my' 
+                      ? "You haven't added any resources yet." 
+                      : "No resources match your search criteria."}
+                  </p>
+                  
+                  <Button onClick={() => router.push('/dashboard/resources/new')}>
+                    Add Resource
+                  </Button>
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {resources.map((resource) => (
                     <Card key={resource.id} className="overflow-hidden">
@@ -393,19 +436,6 @@ export default function ResourcesPage() {
                       </CardFooter>
                     </Card>
                   ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center border rounded-md">
-                  <h3 className="text-xl font-medium mb-2">No resources found</h3>
-                  <p className="text-muted-foreground mb-6">
-                    {activeTab === 'my' 
-                      ? "You haven't added any resources yet." 
-                      : "No resources match your search criteria."}
-                  </p>
-                  
-                  <Button onClick={() => router.push('/dashboard/resources/new')}>
-                    Add Resource
-                  </Button>
                 </div>
               )}
             </TabsContent>
