@@ -1,8 +1,8 @@
 // src/pages/api/connections/index.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client/edge';
+import { PrismaClient } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
-import { authMiddleware } from '@/lib/middleware';
+import { authMiddleware } from '@/lib/auth';
 
 // Extend the NextApiRequest to include the user property
 declare module 'next' {
@@ -24,23 +24,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const userId = req.user.id;
+      const userId = parseInt(req.user.id, 10);
       const isMentor = req.user.role === 'MENTOR';
       const status = req.query.status as string | undefined;
-
-      // Build where clause
-      const whereClause: any = isMentor 
-        ? { mentorId: parseInt(userId) } 
-        : { menteeId: parseInt(userId) };
+      
+      // Build the where clause
+      const where: any = isMentor 
+        ? { mentorId: userId } 
+        : { menteeId: userId };
       
       // Add status filter if provided
-      if (status) {
-        whereClause.status = status;
+      if (status && ['pending', 'accepted', 'rejected'].includes(status)) {
+        where.status = status;
       }
-
-      // Get connections based on the user's role and filters
+      
       const connections = await prisma.connection.findMany({
-        where: whereClause,
+        where,
         include: {
           mentorUser: {
             select: {
@@ -50,7 +49,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 select: {
                   profilePicture: true,
                   bio: true,
-                  skills: true,
                 },
               },
             },
@@ -63,7 +61,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 select: {
                   profilePicture: true,
                   bio: true,
-                  interests: true,
                 },
               },
             },
@@ -73,20 +70,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           updatedAt: 'desc',
         },
       });
-
-      // Transform the data for easier use on the frontend
-      const formattedConnections = connections.map(connection => ({
-        id: connection.id,
-        status: connection.status,
-        createdAt: connection.createdAt,
-        updatedAt: connection.updatedAt,
-        mentorId: connection.mentorId,
-        menteeId: connection.menteeId,
-        mentor: connection.mentorUser,
-        mentee: connection.menteeUser,
-      }));
-
-      return res.status(200).json({ connections: formattedConnections });
+      
+      return res.status(200).json({ connections });
     } catch (error) {
       console.error('Error fetching connections:', error);
       return res.status(500).json({ error: 'Failed to fetch connections' });
@@ -95,57 +80,73 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // POST request - create a new connection request
   else if (req.method === 'POST') {
     try {
+      const { mentorId } = req.body;
+      
       if (!req.user?.id) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
       
-      // Only mentees can send connection requests
-      if (req.user.role !== 'MENTEE') {
-        return res.status(403).json({ error: 'Only mentees can send connection requests' });
-      }
-
-      const { mentorId } = req.body;
+      const menteeId = parseInt(req.user.id, 10);
       
       if (!mentorId) {
         return res.status(400).json({ error: 'Mentor ID is required' });
       }
-
-      // Check if the mentor exists
-      const mentor = await prisma.user.findUnique({
-        where: {
-          id: mentorId,
-          role: 'MENTOR'
-        },
-      });
-
-      if (!mentor) {
-        return res.status(404).json({ error: 'Mentor not found' });
+      
+      // Check if the user is trying to connect with themselves
+      if (mentorId === menteeId) {
+        return res.status(400).json({ error: 'You cannot connect with yourself' });
       }
-
-      // Check if there's already a connection between them
+      
+      // Check if a connection already exists
       const existingConnection = await prisma.connection.findFirst({
         where: {
-          mentorId: mentorId,
-          menteeId: parseInt(req.user.id)
+          mentorId: Number(mentorId),
+          menteeId: menteeId,
         },
       });
-
+      
       if (existingConnection) {
         return res.status(400).json({ 
-          error: 'Connection already exists',
-          status: existingConnection.status
+          error: 'Connection already exists', 
+          status: existingConnection.status 
         });
       }
-
+      
       // Create the connection
       const connection = await prisma.connection.create({
         data: {
-          mentorId: mentorId,
-          menteeId: parseInt(req.user.id),
-          status: 'pending'
+          mentorId: Number(mentorId),
+          menteeId: menteeId,
+          status: 'pending',
+        },
+        include: {
+          mentorUser: {
+            select: {
+              id: true,
+              fullname: true,
+              profile: {
+                select: {
+                  profilePicture: true,
+                  bio: true,
+                },
+              },
+            },
+          },
+          menteeUser: {
+            select: {
+              id: true,
+              fullname: true,
+              profile: {
+                select: {
+                  profilePicture: true,
+                  bio: true,
+                },
+              },
+            },
+          },
         },
       });
-
+      
       return res.status(201).json({ connection });
     } catch (error) {
       console.error('Error creating connection request:', error);

@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation" // Make sure to import from next/navigation, not next/router
 import { useAuth } from "@/context/auth-context"
-import { get } from "@/lib/api-client"
+import { get, put } from "@/lib/api-client"
 import { useToast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -47,8 +47,20 @@ export default function ConnectionsPage() {
     async function fetchConnections() {
       setIsLoading(true)
       try {
-        const { connections } = await get<{ connections: Connection[] }>('/api/connections')
-        setConnections(connections)
+        const response = await get<{ connections: any[] }>('/api/connections')
+        if (response) {
+          // Transform connections to use the expected property names
+          const formattedConnections = response.connections.map(conn => ({
+            id: conn.id,
+            status: conn.status,
+            createdAt: conn.createdAt,
+            updatedAt: conn.updatedAt,
+            mentor: conn.mentorUser || conn.mentor,
+            mentee: conn.menteeUser || conn.mentee
+          }));
+          
+          setConnections(formattedConnections)
+        }
       } catch (error) {
         console.error('Error fetching connections:', error)
         toast({
@@ -157,7 +169,11 @@ export default function ConnectionsPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => router.push(`/dashboard/messages?userId=${otherParty.id}`)}
+                          onClick={() => {
+                            // Find the right thread ID for this connection
+                            const threadId = connection.id;
+                            router.push(`/dashboard/messages?thread=${threadId}`);
+                          }}
                         >
                           Message
                         </Button>
@@ -180,12 +196,8 @@ export default function ConnectionsPage() {
                           size="sm" 
                           onClick={async () => {
                             try {
-                              await fetch(`/api/connections/${connection.id}/accept`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' }
-                              });
+                              await put(`/api/connections/${connection.id}/accept`, {});
                               
-                              // Update local state to reflect the change
                               setConnections(prev => 
                                 prev.map(c => c.id === connection.id 
                                   ? {...c, status: 'accepted'} 
@@ -197,11 +209,11 @@ export default function ConnectionsPage() {
                                 title: "Connection accepted",
                                 description: "You are now connected with this mentee"
                               });
-                            } catch (error) {
+                            } catch (error: any) {
                               console.error('Error accepting connection:', error);
                               toast({
                                 title: "Error",
-                                description: "Failed to accept connection",
+                                description: error.message || "Failed to accept connection",
                                 variant: "destructive"
                               });
                             }
@@ -214,10 +226,7 @@ export default function ConnectionsPage() {
                           size="sm" 
                           onClick={async () => {
                             try {
-                              await fetch(`/api/connections/${connection.id}/reject`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' }
-                              });
+                              await put(`/api/connections/${connection.id}/reject`, {});
                               
                               // Update local state to reflect the change
                               setConnections(prev => 
@@ -231,11 +240,11 @@ export default function ConnectionsPage() {
                                 title: "Connection rejected",
                                 description: "You have rejected this connection request"
                               });
-                            } catch (error) {
+                            } catch (error: any) {
                               console.error('Error rejecting connection:', error);
                               toast({
                                 title: "Error",
-                                description: "Failed to reject connection",
+                                description: error.message || "Failed to reject connection",
                                 variant: "destructive"
                               });
                             }

@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import { NextApiRequest } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 
 const prisma = new PrismaClient().$extends(withAccelerate())
 
@@ -140,3 +140,30 @@ export async function getSession(req?: NextApiRequest) {
   }
 }
 
+/**
+ * Middleware that authenticates API requests
+ * Works with the Pages Router (/pages/api/) endpoints
+ */
+export function authMiddleware(handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void>) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      const session = await getSession(req);
+      
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      // Attach user to request
+      req.user = {
+        id: session.user.id.toString(),
+        role: session.user.role,
+      };
+      
+      // Call the original handler
+      return handler(req, res);
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return res.status(500).json({ error: 'Authentication failed' });
+    }
+  };
+}
