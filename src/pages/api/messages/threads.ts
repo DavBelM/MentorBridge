@@ -1,4 +1,3 @@
-// src/pages/api/messages/threads.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client/edge';
 import { withAccelerate } from '@prisma/extension-accelerate';
@@ -19,7 +18,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userId = parseInt(req.user.id, 10);
     const isMentor = req.user.role === 'MENTOR';
     
-    // Get all connections for the user that have messages
     const connections = await prisma.connection.findMany({
       where: isMentor 
         ? { mentorId: userId, status: 'accepted' } 
