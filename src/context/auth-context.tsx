@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 // Define proper types for user and profile
@@ -22,13 +23,11 @@ type Profile = {
 }
 
 type User = {
-  id: number
-  fullname: string
-  username: string
+  id: string
   email: string
-  role: 'MENTOR' | 'MENTEE'
-  createdAt: string
-  updatedAt: string
+  fullname: string
+  role: string
+  isApproved: boolean
   profile: Profile | null
 }
 
@@ -63,68 +62,32 @@ const AuthContext = createContext<AuthContextType>({
   checkUsernameAvailability: async () => ({ available: false }),
 })
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession()
   const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Check if user is already logged in (on mount and when localStorage changes)
   useEffect(() => {
-    const checkAuthStatus = async () => {
+    if (status === "loading") {
       setIsLoading(true)
-      
-      try {
-        // First check session storage for cached user data
-        const cachedUser = sessionStorage.getItem(USER_CACHE_KEY)
-        if (cachedUser) {
-          setUser(JSON.parse(cachedUser))
-        }
-        
-        const token = localStorage.getItem(TOKEN_CACHE_KEY)
-        
-        if (!token) {
-          setUser(null)
-          setIsLoading(false)
-          return
-        }
-        
-        // Verify token with API
-        const response = await fetch('/api/auth/verify', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
-        
-        if (!response.ok) {
-          localStorage.removeItem(TOKEN_CACHE_KEY)
-          sessionStorage.removeItem(USER_CACHE_KEY)
-          setUser(null)
-          setIsLoading(false)
-          return
-        }
-        
-        const data = await response.json()
-        setUser(data.user)
-        
-        // Cache user data in session storage
-        sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user))
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        localStorage.removeItem(TOKEN_CACHE_KEY)
-        sessionStorage.removeItem(USER_CACHE_KEY)
-        setUser(null)
-      } finally {
-        setIsLoading(false)
-      }
+    } else if (status === "authenticated" && session?.user) {
+      setUser({
+        id: session.user.id as string,
+        email: session.user.email as string,
+        fullname: session.user.fullname as string,
+        role: session.user.role as string,
+        isApproved: session.user.isApproved as boolean,
+        profile: session.user.profile as Profile | null
+      })
+      setIsLoading(false)
+    } else if (status === "unauthenticated") {
+      setUser(null)
+      setIsLoading(false)
+      router.push("/login")
     }
-
-    checkAuthStatus()
-    
-    // Listen for storage changes to support multiple tabs
-    window.addEventListener("storage", checkAuthStatus)
-    return () => window.removeEventListener("storage", checkAuthStatus)
-  }, [])
+  }, [status, session, router])
 
   // Login function with optimizations
   const login = async (email: string, password: string) => {

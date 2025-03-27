@@ -11,6 +11,8 @@ import { CalendarClock, UserCheck, TrendingUp, Bookmark } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/components/ui/use-toast"
 
 // Types for dashboard data
 interface MenteeStats {
@@ -18,6 +20,9 @@ interface MenteeStats {
   totalSessions: number
   learningProgress: number
   savedResources: number
+  activeSessions: number
+  completedSessions: number
+  learningGoals: number
 }
 
 interface Mentor {
@@ -52,6 +57,27 @@ interface Resource {
   description: string
 }
 
+interface UpcomingSession {
+  id: number
+  title: string
+  mentorName: string
+  startTime: string
+  endTime: string
+}
+
+interface LearningProgress {
+  category: string
+  value: number
+  description: string
+}
+
+interface MentorConnection {
+  id: number
+  mentorName: string
+  expertise: string[]
+  status: string
+}
+
 export default function MenteeDashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<MenteeStats | null>(null)
@@ -59,6 +85,10 @@ export default function MenteeDashboardPage() {
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([])
   const [recommendedResources, setRecommendedResources] = useState<Resource[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [progress, setProgress] = useState<LearningProgress[]>([])
+  const [mentorConnections, setMentorConnections] = useState<MentorConnection[]>([])
+  const [notifications, setNotifications] = useState<any[]>([])
+  const { toast } = useToast()
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -113,6 +143,48 @@ export default function MenteeDashboardPage() {
         return '📝';
     }
   }
+
+  const fetchProgress = async () => {
+    try {
+      const response = await fetch('/api/mentee/progress');
+      const data = await response.json();
+      setProgress(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch progress data",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchMentorConnections = async () => {
+    try {
+      const response = await fetch('/api/mentee/mentor-connections');
+      const data = await response.json();
+      setMentorConnections(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch mentor connections",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      const data = await response.json();
+      setNotifications(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch notifications",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -172,7 +244,7 @@ export default function MenteeDashboardPage() {
             />
             <StatsCard 
               title="Sessions Attended" 
-              value={stats?.totalSessions || 0}
+              value={stats?.activeSessions || 0}
               description="Total learning sessions"
               icon={<CalendarClock className="h-4 w-4" />}
             />
@@ -397,6 +469,87 @@ export default function MenteeDashboardPage() {
             <Link href="/dashboard/resources">Browse Resources</Link>
           </Button>
         </CardFooter>
+      </Card>
+
+      {/* Mentor Connections */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Your Mentors</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {mentorConnections.length === 0 ? (
+            <p>No mentor connections yet</p>
+          ) : (
+            <div className="space-y-4">
+              {mentorConnections.map((connection) => (
+                <div key={connection.id} className="border p-4 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{connection.mentorName}</h3>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {connection.expertise.map((skill, index) => (
+                          <Badge key={index} variant="secondary">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <Badge variant={connection.status === 'active' ? 'default' : 'secondary'}>
+                      {connection.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Learning Progress */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Learning Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {progress.map((item, index) => (
+              <div key={index}>
+                <div className="flex justify-between mb-2">
+                  <span className="font-medium">{item.category}</span>
+                  <span>{item.value}%</span>
+                </div>
+                <Progress value={item.value} />
+                <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Notifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {notifications.length === 0 ? (
+            <p>No new notifications</p>
+          ) : (
+            <div className="space-y-4">
+              {notifications.map((notification, index) => (
+                <div key={index} className="flex items-start space-x-4 p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{notification.title}</h4>
+                    <p className="text-sm text-gray-600">{notification.content}</p>
+                  </div>
+                  <Badge variant={notification.isRead ? "secondary" : "default"}>
+                    {notification.isRead ? "Read" : "New"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   )

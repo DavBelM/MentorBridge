@@ -10,13 +10,16 @@ import { Button } from "@/components/ui/button"
 import { CalendarClock, UserCheck, Star, Clock } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/components/ui/use-toast"
+import { Progress } from "@/components/ui/progress"
 
 // Types for dashboard data
 interface MentorStats {
   totalMentees: number
-  totalSessions: number
-  averageRating: number
-  upcomingSessionsCount: number
+  activeSessions: number
+  completedSessions: number
+  pendingRequests: number
 }
 
 interface Mentee {
@@ -43,43 +46,72 @@ interface Session {
   }
 }
 
+interface UpcomingSession {
+  id: number
+  title: string
+  menteeName: string
+  startTime: string
+  endTime: string
+}
+
+interface ProgressData {
+  category: string
+  value: number
+  description: string
+}
+
 export default function MentorDashboardPage() {
   const { user } = useAuth()
-  const [stats, setStats] = useState<MentorStats | null>(null)
+  const [stats, setStats] = useState<MentorStats>({
+    totalMentees: 0,
+    activeSessions: 0,
+    completedSessions: 0,
+    pendingRequests: 0
+  })
   const [recentMentees, setRecentMentees] = useState<Mentee[]>([])
-  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([])
+  const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([])
+  const [progress, setProgress] = useState<ProgressData[]>([])
+  const [notifications, setNotifications] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
         setIsLoading(true)
         
-        // Fetch mentor stats
-        const dashboardData = await get<{
-          stats: MentorStats
-          recentMentees: Mentee[]
-          upcomingSessions: Session[]
-        }>('/api/dashboard/mentor')
+        // Fetch all data in parallel
+        const [dashboardData, sessionsData, progressData, notificationsData] = await Promise.all([
+          get<{
+            stats: MentorStats
+            recentMentees: Mentee[]
+          }>('/api/mentor/dashboard-stats'),
+          get<UpcomingSession[]>('/api/mentor/upcoming-sessions'),
+          get<ProgressData[]>('/api/mentor/progress'),
+          get<any[]>('/api/notifications')
+        ])
         
-        setStats(dashboardData.stats)
-        setRecentMentees(dashboardData.recentMentees)
-        setUpcomingSessions(dashboardData.upcomingSessions)
+        if (dashboardData) {
+          setStats(dashboardData.stats)
+          setRecentMentees(dashboardData.recentMentees)
+        }
+        if (sessionsData) setUpcomingSessions(sessionsData)
+        if (progressData) setProgress(progressData)
+        if (notificationsData) setNotifications(notificationsData)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
-        // Return default/fallback data
-        return {
-          stats: { totalMentees: 0, totalSessions: 0, averageRating: 0, upcomingSessionsCount: 0 },
-          recentMentees: [],
-          upcomingSessions: []
-        }
+        toast({
+          title: "Error",
+          description: "Failed to fetch dashboard data",
+          variant: "destructive",
+        })
       } finally {
         setIsLoading(false)
       }
     }
     
     fetchDashboardData()
-  }, [])
+  }, [toast])
   
   // Format date for display
   const formatSessionTime = (dateString: string) => {
@@ -90,6 +122,48 @@ export default function MentorDashboardPage() {
       hour: 'numeric',
       minute: '2-digit'
     }).format(date)
+  }
+
+  const fetchUpcomingSessions = async () => {
+    try {
+      const response = await fetch('/api/mentor/upcoming-sessions')
+      const data = await response.json()
+      setUpcomingSessions(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch upcoming sessions",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const fetchProgress = async () => {
+    try {
+      const response = await fetch('/api/mentor/progress')
+      const data = await response.json()
+      setProgress(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch progress data",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications')
+      const data = await response.json()
+      setNotifications(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch notifications",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -144,27 +218,27 @@ export default function MentorDashboardPage() {
           <>
             <StatsCard 
               title="Total Mentees" 
-              value={stats?.totalMentees || 0} 
+              value={stats.totalMentees} 
               description="Active mentoring relationships"
               icon={<UserCheck className="h-4 w-4" />}
             />
             <StatsCard 
-              title="Sessions Completed" 
-              value={stats?.totalSessions || 0}
-              description="Total mentoring sessions"
+              title="Active Sessions" 
+              value={stats.activeSessions}
+              description="Total active mentoring sessions"
               icon={<CalendarClock className="h-4 w-4" />}
             />
             <StatsCard 
-              title="Average Rating" 
-              value={stats?.averageRating ? `${stats.averageRating.toFixed(1)}/5` : 'N/A'}
-              description="Based on mentee feedback"
-              icon={<Star className="h-4 w-4" />}
+              title="Completed Sessions" 
+              value={stats.completedSessions}
+              description="Total completed mentoring sessions"
+              icon={<CalendarClock className="h-4 w-4" />}
             />
             <StatsCard 
-              title="Upcoming Sessions" 
-              value={stats?.upcomingSessionsCount || 0}
-              description="Sessions in the next 7 days"
-              icon={<Clock className="h-4 w-4" />}
+              title="Pending Requests" 
+              value={stats.pendingRequests}
+              description="Total pending mentoring requests"
+              icon={<UserCheck className="h-4 w-4" />}
             />
           </>
         )}
@@ -248,10 +322,10 @@ export default function MentorDashboardPage() {
                     <p className="font-medium">{session.title}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={session.mentee.profile?.profilePicture || ''} />
-                        <AvatarFallback>{session.mentee.fullname.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={session.menteeName.charAt(0)} />
+                        <AvatarFallback>{session.menteeName.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{session.mentee.fullname}</span>
+                      <span className="text-sm">{session.menteeName}</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       {formatSessionTime(session.startTime)}
@@ -272,6 +346,69 @@ export default function MentorDashboardPage() {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Progress Tracking */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Your Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-2 w-full" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                ))}
+              </div>
+            ) : progress.length > 0 ? (
+              progress.map((item, index) => (
+                <div key={index}>
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">{item.category}</span>
+                    <span>{item.value}%</span>
+                  </div>
+                  <Progress value={item.value} />
+                  <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                No progress data available yet.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Notifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {notifications.length === 0 ? (
+            <p>No new notifications</p>
+          ) : (
+            <div className="space-y-4">
+              {notifications.map((notification, index) => (
+                <div key={index} className="flex items-start space-x-4 p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{notification.title}</h4>
+                    <p className="text-sm text-gray-600">{notification.content}</p>
+                  </div>
+                  <Badge variant={notification.isRead ? "secondary" : "default"}>
+                    {notification.isRead ? "Read" : "New"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

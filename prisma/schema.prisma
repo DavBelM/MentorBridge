@@ -9,12 +9,15 @@ datasource db {
 
 model User {
   id                 Int                  @id @default(autoincrement())
-  isActive  Boolean  @default(true)
+  isActive           Boolean              @default(true)
   fullname           String
   username           String               @unique
   email              String               @unique
   password           String
-  role               String
+  role               String               // "ADMIN", "MENTOR", "MENTEE"
+  isApproved         Boolean              @default(false)  // For mentor approval
+  submittedForApproval Boolean              @default(false)
+  submittedForApprovalAt DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   menteeConnections  Connection[]         @relation("MenteeConnections")
@@ -26,6 +29,8 @@ model User {
   sentMessages       Message[]            @relation("SentMessages")
   createdResources   Resource[]           @relation("CreatedResources")
   createdCollections ResourceCollection[] @relation("CreatedCollections")
+  notifications      Notification[]       @relation("UserNotifications")
+  progress           Progress[]           @relation("UserProgress")
 }
 
 model Profile {
@@ -115,4 +120,39 @@ model ResourceCollection {
   updatedAt   DateTime   @updatedAt
   createdBy   User       @relation("CreatedCollections", fields: [createdById], references: [id])
   resources   Resource[] @relation("ResourceToCollection")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String   // "MESSAGE", "CONNECTION_REQUEST", "MENTOR_APPROVAL", "SESSION_REMINDER"
+  title     String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation("UserNotifications", fields: [userId], references: [id])
+}
+
+model Progress {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  category    String   // "LEARNING", "MENTORING", "SKILLS"
+  description String
+  value       Int      // Progress value (0-100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("UserProgress", fields: [userId], references: [id])
+}
+
+model PlatformSettings {
+  id                    Int      @id @default(1)
+  allowNewRegistrations Boolean  @default(true)
+  requireMentorApproval Boolean  @default(true)
+  maxSessionsPerWeek    Int      @default(5)
+  sessionDuration       Int      @default(60)
+  maintenanceMode       Boolean  @default(false)
+  siteName             String   @default("MentorBridge")
+  contactEmail         String   @default("support@mentorbridge.com")
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
 }
