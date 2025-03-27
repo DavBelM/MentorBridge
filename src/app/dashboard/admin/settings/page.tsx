@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Save } from "lucide-react"
+import { Loader2, Save, Settings2 } from "lucide-react"
 
 interface PlatformSettings {
   allowNewRegistrations: boolean
@@ -94,17 +94,35 @@ export default function PlatformSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Platform Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your platform configuration and preferences
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Platform Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your platform configuration and preferences
+          </p>
+        </div>
+        <Button onClick={handleSave} disabled={isLoading} className="gap-2">
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              Save Changes
+            </>
+          )}
+        </Button>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>General Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              General Settings
+            </CardTitle>
             <CardDescription>
               Basic platform configuration
             </CardDescription>
@@ -116,6 +134,7 @@ export default function PlatformSettings() {
                 id="siteName"
                 value={settings.siteName}
                 onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+                placeholder="Enter site name"
               />
             </div>
             <div className="space-y-2">
@@ -125,6 +144,7 @@ export default function PlatformSettings() {
                 type="email"
                 value={settings.contactEmail}
                 onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+                placeholder="Enter contact email"
               />
             </div>
           </CardContent>
@@ -132,7 +152,10 @@ export default function PlatformSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Registration Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Registration Settings
+            </CardTitle>
             <CardDescription>
               Control user registration and approval process
             </CardDescription>
@@ -171,7 +194,10 @@ export default function PlatformSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Session Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Session Settings
+            </CardTitle>
             <CardDescription>
               Configure session-related settings
             </CardDescription>
@@ -188,6 +214,7 @@ export default function PlatformSettings() {
                   ...settings, 
                   maxSessionsPerWeek: parseInt(e.target.value) 
                 })}
+                className="max-w-[200px]"
               />
             </div>
             <div className="space-y-2">
@@ -202,6 +229,7 @@ export default function PlatformSettings() {
                   ...settings, 
                   sessionDuration: parseInt(e.target.value) 
                 })}
+                className="max-w-[200px]"
               />
             </div>
           </CardContent>
@@ -209,7 +237,10 @@ export default function PlatformSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>System Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              System Settings
+            </CardTitle>
             <CardDescription>
               System-wide configuration options
             </CardDescription>
@@ -231,22 +262,6 @@ export default function PlatformSettings() {
             </div>
           </CardContent>
         </Card>
-
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </>
-            )}
-          </Button>
-        </div>
       </div>
     </div>
   )
