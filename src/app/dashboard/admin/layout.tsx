@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -27,8 +27,13 @@ export default function AdminDashboardLayout({
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
+  useEffect(() => {
+    if (!session?.user || session.user.role !== "ADMIN") {
+      router.push("/login")
+    }
+  }, [session, router])
+
   if (!session?.user || session.user.role !== "ADMIN") {
-    router.push("/login")
     return null
   }
 

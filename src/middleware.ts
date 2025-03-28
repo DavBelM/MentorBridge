@@ -6,29 +6,22 @@ export default withAuth(
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
 
-    // Redirect from login page if already authenticated
+    // If user is authenticated and trying to access login page, redirect to appropriate dashboard
     if (path === "/login" && token) {
-      // Redirect based on role
-      if (token.role === "ADMIN") {
-        return NextResponse.redirect(new URL("/dashboard/admin", req.url))
-      } else if (token.role === "MENTOR") {
-        return NextResponse.redirect(new URL("/dashboard/mentor", req.url))
-      } else if (token.role === "MENTEE") {
-        return NextResponse.redirect(new URL("/dashboard/mentee", req.url))
-      }
+      return NextResponse.redirect(new URL(getRedirectPath(token.role as string), req.url))
     }
 
     // Handle role-based access
     if (path.startsWith("/dashboard/admin") && token?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/login", req.url))
+      return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 
     if (path.startsWith("/dashboard/mentor") && token?.role !== "MENTOR") {
-      return NextResponse.redirect(new URL("/login", req.url))
+      return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 
     if (path.startsWith("/dashboard/mentee") && token?.role !== "MENTEE") {
-      return NextResponse.redirect(new URL("/login", req.url))
+      return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 
     // Handle mentor approval status
@@ -40,10 +33,33 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+        const path = req.nextUrl.pathname
+        
+        // Allow access to login page without authentication
+        if (path === "/login") {
+          return true
+        }
+
+        // Require authentication for all other protected routes
+        return !!token
+      },
     },
   }
 )
+
+function getRedirectPath(role: string): string {
+  switch (role) {
+    case "ADMIN":
+      return "/dashboard/admin"
+    case "MENTOR":
+      return "/dashboard/mentor"
+    case "MENTEE":
+      return "/dashboard/mentee"
+    default:
+      return "/dashboard"
+  }
+}
 
 export const config = {
   matcher: [

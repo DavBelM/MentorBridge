@@ -3,6 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
 import bcrypt from "bcryptjs"
 
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined")
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -12,32 +16,37 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing credentials")
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error("Please enter your email and password")
           }
-        })
 
-        if (!user) {
-          throw new Error("No user found")
-        }
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          })
 
-        const passwordMatch = await bcrypt.compare(credentials.password, user.password)
+          if (!user) {
+            throw new Error("No user found with this email")
+          }
 
-        if (!passwordMatch) {
-          throw new Error("Invalid password")
-        }
+          const passwordMatch = await bcrypt.compare(credentials.password, user.password)
 
-        return {
-          id: user.id,
-          email: user.email,
-          fullname: user.fullname,
-          role: user.role,
-          isApproved: user.isApproved
+          if (!passwordMatch) {
+            throw new Error("Invalid password")
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            fullname: user.fullname,
+            role: user.role,
+            isApproved: user.isApproved
+          }
+        } catch (error) {
+          console.error("Auth error:", error)
+          throw error
         }
       }
     })
@@ -56,13 +65,33 @@ export const authOptions: NextAuthOptions = {
         session.user.isApproved = token.isApproved as boolean
       }
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      // If the url is relative, prefix it with the base URL
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`
+      }
+      // If the url is already absolute, return it
+      return url
     }
   },
   pages: {
     signIn: "/login",
-    error: "/login"
+    error: "/login",
+    signOut: "/login"
   },
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.JWT_SECRET,
+  debug: process.env.NODE_ENV === "development",
+  events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      console.log("Sign in event:", { user, account, profile, isNewUser })
+    },
+    async signOut({ session, token }) {
+      console.log("Sign out event:", { session, token })
+    }
   }
 } 
