@@ -15,7 +15,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials: Record<"email" | "password", string> | undefined) {
         try {
           if (!credentials?.email || !credentials?.password) {
             throw new Error("Please enter your email and password")
@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
             }
           })
 
-          if (!user) {
+          if (!user || !user.password) {
             throw new Error("No user found with this email")
           }
 
@@ -40,7 +40,7 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            fullname: user.fullname,
+            fullname: user.fullname || "", // Provide a default empty string if null
             role: user.role,
             isApproved: user.isApproved
           }
@@ -67,12 +67,22 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // If the url is relative, prefix it with the base URL
-      if (url.startsWith("/")) {
-        return `${baseUrl}${url}`
+      // For RSC navigation, always allow the original URL
+      if (url.includes('_rsc')) {
+        return url;
       }
-      // If the url is already absolute, return it
-      return url
+      
+      // Fix for absolute URLs (important for complex redirects)
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      
+      // Allow external redirects only to trusted domains
+      if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+      
+      return baseUrl;
     }
   },
   pages: {
@@ -94,4 +104,4 @@ export const authOptions: NextAuthOptions = {
       console.log("Sign out event:", { session, token })
     }
   }
-} 
+}

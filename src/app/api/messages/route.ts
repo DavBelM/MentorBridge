@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       data: {
         userId: recipientId,
         type: "NEW_MESSAGE",
-        message: `New message from ${session.user.name}`,
+        message: `New message from ${session.user.fullname}`,
         read: false,
       },
     })

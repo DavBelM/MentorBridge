@@ -1,48 +1,36 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client/edge';
-import { withAccelerate } from '@prisma/extension-accelerate';
-import { authMiddleware } from '@/lib/middleware';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-config";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient().$extends(withAccelerate());
-
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export async function GET(request: NextRequest) {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const userId = parseInt(req.user.id, 10);
-    const isMentor = req.user.role === 'MENTOR';
+    const userId = session.user.id;
+    const isMentor = session.user.role === 'MENTOR';
     
     const connections = await prisma.connection.findMany({
       where: isMentor 
         ? { mentorId: userId, status: 'accepted' } 
         : { menteeId: userId, status: 'accepted' },
       include: {
-        mentorUser: {
+        mentor: {
           select: {
             id: true,
             fullname: true,
-            profile: {
-              select: {
-                profilePicture: true,
-              },
-            },
+            image: true,
           },
         },
-        menteeUser: {
+        mentee: {
           select: {
             id: true,
             fullname: true,
-            profile: {
-              select: {
-                profilePicture: true,
-              },
-            },
+            image: true,
           },
         },
         // Get the most recent message
@@ -82,8 +70,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const threads = connections
       .map(connection => ({
         id: connection.id,
-        contact: isMentor ? connection.menteeUser : connection.mentorUser,
-        lastMessage: connection.messages[0] || null, // Allow null for no messages
+        contact: isMentor ? connection.mentee : connection.mentor,
+        lastMessage: connection.messages[0] || null,
         unreadCount: connection._count.messages,
         updatedAt: connection.messages[0]?.createdAt || connection.updatedAt,
         hasMessages: connection.messages.length > 0,
@@ -95,11 +83,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       });
 
-    return res.status(200).json({ threads });
+    return NextResponse.json({ threads });
   } catch (error) {
     console.error('Error fetching message threads:', error);
-    return res.status(500).json({ error: 'Failed to fetch message threads' });
+    return NextResponse.json(
+      { error: 'Failed to fetch message threads' },
+      { status: 500 }
+    );
   }
 }
-
-export default authMiddleware(handler);

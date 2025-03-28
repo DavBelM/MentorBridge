@@ -1,73 +1,58 @@
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+import { NextResponse } from 'next/server'
+import { withAuth } from 'next-auth/middleware'
 
+// Implement route protection with NextAuth middleware
 export default withAuth(
+  // `withAuth` augments your Request with the user's token
   function middleware(req) {
-    const token = req.nextauth.token
-    const path = req.nextUrl.pathname
-
-    // If user is authenticated and trying to access login page, redirect to appropriate dashboard
-    if (path === "/login" && token) {
-      return NextResponse.redirect(new URL(getRedirectPath(token.role as string), req.url))
+    const { pathname } = req.nextUrl
+    const { token } = req.nextauth
+    
+    // Allow access to authentication routes
+    if (pathname.startsWith('/api/auth')) {
+      return NextResponse.next()
     }
-
-    // Handle role-based access
-    if (path.startsWith("/dashboard/admin") && token?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
+    
+    // If user is authenticated but accessing login page, redirect to dashboard
+    if (pathname === '/login' && token) {
+      const url = new URL(`/dashboard/${(token.role as string).toLowerCase()}`, req.url)
+      return NextResponse.redirect(url)
     }
-
-    if (path.startsWith("/dashboard/mentor") && token?.role !== "MENTOR") {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
+    
+    // Role-based access for dashboard routes
+    if (pathname.startsWith('/dashboard/mentor') && token?.role !== 'MENTOR') {
+      const url = new URL('/dashboard/mentee', req.url)
+      return NextResponse.redirect(url)
     }
-
-    if (path.startsWith("/dashboard/mentee") && token?.role !== "MENTEE") {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
+    
+    if (pathname.startsWith('/dashboard/mentee') && token?.role !== 'MENTEE') {
+      const url = new URL('/dashboard/mentor', req.url)
+      return NextResponse.redirect(url)
     }
-
-    // Handle mentor approval status
-    if (token?.role === "MENTOR" && !token.isApproved && path !== "/pending-approval") {
-      return NextResponse.redirect(new URL("/pending-approval", req.url))
+    
+    if (pathname.startsWith('/dashboard/admin') && token?.role !== 'ADMIN') {
+      const url = new URL('/login', req.url)
+      return NextResponse.redirect(url)
     }
-
+    
     return NextResponse.next()
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname
-        
-        // Allow access to login page without authentication
-        if (path === "/login") {
-          return true
-        }
-
-        // Require authentication for all other protected routes
-        return !!token
-      },
-    },
+      // Only run middleware on matching routes
+      authorized: ({ token }) => !!token
+    }
   }
 )
 
-function getRedirectPath(role: string): string {
-  switch (role) {
-    case "ADMIN":
-      return "/dashboard/admin"
-    case "MENTOR":
-      return "/dashboard/mentor"
-    case "MENTEE":
-      return "/dashboard/mentee"
-    default:
-      return "/dashboard"
-  }
-}
-
+// Update matcher to include all routes you want to protect
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/login",
-    "/pending-approval",
-    "/api/mentor/:path*",
-    "/api/admin/:path*",
-    "/api/mentee/:path*",
+    '/dashboard/:path*',
+    '/api/:path*',
+    '/profile/:path*',
+    '/settings/:path*',
+    '/login',
+    '/register'
   ],
-} 
+}

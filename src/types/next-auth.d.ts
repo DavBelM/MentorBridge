@@ -10,9 +10,18 @@ declare module "next-auth" {
   }
 
   interface Session {
-    user: User & {
+    user: {
+      id: string
+      email: string
+      fullname: string
       role: string
       isApproved: boolean
+      profile?: {
+        id: number
+        bio?: string | null
+        location?: string | null
+        // other profile fields
+      } | null
     }
   }
-} 
+}
