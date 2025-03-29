@@ -1,62 +1,66 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { withAuth } from 'next-auth/middleware'
+import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
 // Define public paths that don't require authentication
-const publicPaths = ['/login', '/register', '/api/auth']
+const publicPaths = ['/login', '/register', '/api/auth', '/pending-approval', '/']
 
-// Export withAuth middleware with your custom function inside
-export default withAuth(
-  function middleware(request) {
-    const path = request.nextUrl.pathname
-    
-    // If user is authenticated but accessing login page, redirect to dashboard
-    if (path === '/login' && request.nextauth?.token) {
-      const url = new URL(`/dashboard/${(request.nextauth.token.role as string).toLowerCase()}`, request.url)
-      return NextResponse.redirect(url)
-    }
-    
-    // Role-based access for dashboard routes
-    if (path.startsWith('/dashboard/mentor') && request.nextauth?.token?.role !== 'MENTOR') {
-      const url = new URL('/dashboard/mentee', request.url)
-      return NextResponse.redirect(url)
-    }
-    
-    if (path.startsWith('/dashboard/mentee') && request.nextauth?.token?.role !== 'MENTEE') {
-      const url = new URL('/dashboard/mentor', request.url)
-      return NextResponse.redirect(url)
-    }
-    
-    if (path.startsWith('/dashboard/admin') && request.nextauth?.token?.role !== 'ADMIN') {
-      const url = new URL('/login', request.url)
-      return NextResponse.redirect(url)
-    }
-    
+export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  
+  // Check if path is public
+  if (publicPaths.some(p => path === p || path.startsWith(p))) {
     return NextResponse.next()
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname
-        // Allow public paths even without token
-        if (publicPaths.some(p => path.startsWith(p) || path === p)) {
-          return true
-        }
-        // Otherwise require token
-        return !!token
-      }
-    }
   }
-)
 
-// Update matcher config
+  // Get token with all required options
+  const token = await getToken({ 
+    req: request, 
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === 'production',
+    cookieName: process.env.NODE_ENV === 'production' 
+      ? '__Secure-next-auth.session-token' 
+      : 'next-auth.session-token'
+  })
+  
+  console.log('Middleware for path:', path)
+  console.log('Token data:', token)
+  
+  // No token means redirect to login
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+  
+  // Critical fix: Handle /dashboard root path properly
+  if (path === '/dashboard') {
+    console.log('Redirecting to role dashboard:', token.role)
+    return NextResponse.redirect(
+      new URL(`/dashboard/${token.role.toLowerCase()}`, request.url)
+    )
+  }
+  
+  // Inside your middleware function, add this check
+  if (path.startsWith('/dashboard') && token?.role === 'ADMIN' && path !== '/dashboard/admin') {
+    console.log('Admin detected, redirecting to admin dashboard')
+    return NextResponse.redirect(new URL('/dashboard/admin', request.url))
+  }
+  
+  // Ensure role-based access control
+  if (path.startsWith('/dashboard/admin') && token.role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+  
+  if (path.startsWith('/dashboard/mentor') && token.role !== 'MENTOR') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+  
+  if (path.startsWith('/dashboard/mentee') && token.role !== 'MENTEE') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+  
+  return NextResponse.next()
+}
+
+// Ensure all paths are covered
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/api/:path*',
-    '/profile/:path*',
-    '/settings/:path*',
-    '/login',
-    '/register'
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
 }

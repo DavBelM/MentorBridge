@@ -1,38 +1,33 @@
 "use client"
 
-import { useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/context/auth-context"
-import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
+import { useEffect } from "react"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession()
   const router = useRouter()
-  const { user, isLoading } = useAuth()
   
-  // Redirect based on user role
+  // Debug what's happening
+  console.log("Dashboard page session:", session)
+  console.log("Session status:", status)
+  
   useEffect(() => {
-    if (!isLoading && user) {
-      if (user.role === 'MENTOR') {
-        router.push('/dashboard/mentor')
-      } else if (user.role === 'MENTEE') {
-        router.push('/dashboard/mentee')
-      }
-      // If neither, they'll stay on the generic dashboard
+    // Only redirect when session is fully loaded
+    if (status === "authenticated" && session?.user?.role) {
+      const role = session.user.role.toLowerCase()
+      console.log(`Redirecting to ${role} dashboard from client-side`)
+      router.push(`/dashboard/${role}`)
     }
-  }, [user, isLoading, router])
+  }, [session, status, router])
   
   // Show loading state while redirecting
-  if (isLoading || (user && (user.role === 'MENTOR' || user.role === 'MENTEE'))) {
-    return <DashboardSkeleton />
-  }
-  
-  // Fallback generic dashboard for users without specific roles
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Welcome to MentorBridge</h1>
-      <p className="text-muted-foreground mb-6">
-        Please complete your profile setup to access role-specific features.
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh]">
+      <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+      <h2 className="text-xl font-medium">Loading your dashboard...</h2>
+      <p className="text-muted-foreground mt-2">You'll be redirected momentarily</p>
     </div>
   )
 }

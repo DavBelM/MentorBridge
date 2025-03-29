@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -25,8 +25,8 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>
 
 export function LoginForm() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -38,90 +38,58 @@ export function LoginForm() {
   })
 
   async function onSubmit(data: LoginFormValues) {
-    setIsLoading(true);
-    form.clearErrors(); // Clear previous errors
-  
+    setIsLoading(true)
+    setError('')
+    form.clearErrors()
+
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email: data.email, 
-          password: data.password 
-        }),
-      });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        // Set specific field errors if returned from the API
-        if (responseData.fieldErrors) {
-          Object.entries(responseData.fieldErrors).forEach(([field, message]) => {
-            form.setError(field as any, {
-              type: "manual",
-              message: message as string,
-            });
-          });
-        } else {
-          // General form error
-          form.setError("root", {
-            type: "manual",
-            message: responseData.error || 'Login failed',
-          });
-          
-          toast({
-            title: "Login Failed",
-            description: responseData.error || 'Authentication failed',
-            variant: "destructive",
-          });
-        }
-        return;
+      // Use NextAuth's signIn instead of custom API
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setError('Invalid email or password')
+        toast({
+          title: "Login Failed",
+          description: "Invalid email or password",
+          variant: "destructive",
+        })
+        return
       }
-      
-      // Fix: Access the token and user from the correct response structure
-      if (responseData.success && responseData.data) {
-        const { token, user } = responseData.data;
-        
-        // Store the token consistently with how ProtectedRoute is checking it
-        localStorage.setItem('authToken', token);
-        sessionStorage.setItem('auth_user', JSON.stringify(user));
-        
+
+      if (result?.ok) {
         toast({
           title: "Login Successful",
           description: "Welcome back!",
-        });
+        })
         
-        // Redirect based on user data
-        const userRole = user.role;
-        if (userRole === 'MENTOR') {
-          router.push('/dashboard/mentor');
-        } else {
-          router.push('/dashboard/mentee');
-        }
-      } else {
-        toast({
-          title: "Login Error",
-          description: "Server response format is invalid",
-          variant: "destructive",
-        });
+        // NextAuth will handle the redirect in middleware
+        window.location.href = "/dashboard"
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error:', error)
+      setError('An unexpected error occurred')
       
       toast({
         title: "Connection Error",
         description: "Could not connect to the server. Please try again.",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+          {error}
+        </div>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -175,20 +143,6 @@ export function LoginForm() {
           </LoadingButton>
         </form>
       </Form>
-      
-      {/* Keep the debug button if needed */}
-      <div className="pt-4 text-center">
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:underline"
-          onClick={() => {
-            const token = localStorage.getItem('authToken');
-            alert(token ? `Token exists: ${token.substring(0, 20)}...` : 'No token found');
-          }}
-        >
-          Debug: Check Auth Token
-        </button>
-      </div>
     </div>
   )
 }

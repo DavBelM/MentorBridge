@@ -19,30 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen bg-background antialiased`}>
-        <Providers>
-          <div className="relative flex flex-col min-h-screen">
-            <main className="flex-grow">
-              {children}
-            </main>
-          </div>
-        </Providers>
-        <Script id="intersection-observer" strategy="afterInteractive">
-          {`
-            if ('IntersectionObserver' in window) {
-              const originalObserve = window.IntersectionObserver.prototype.observe;
-              window.IntersectionObserver.prototype.observe = function(target) {
-                if (!this.observationTargets) {
-                  this.observationTargets = [];
-                }
-                if (!this.observationTargets.includes(target)) {
-                  this.observationTargets.push(target);
-                  originalObserve.call(this, target);
-                }
-              };
-            }
-          `}
-        </Script>
+      <head />
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

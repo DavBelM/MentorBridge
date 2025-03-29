@@ -41,38 +41,21 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError('');
+    setError('')
 
     try {
-      // Add callbackUrl to capture the user's role in the response
-      const result = await signIn("credentials", {
+      // Use NextAuth's built-in flow without custom redirects
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        callbackUrl: "/dashboard",
+        redirect: true,
       })
-
-      if (result?.error) {
-        setError('Invalid email or password');
-        return
-      }
-
-      if (result?.ok) {
-        toast.success("Login successful!")
-        
-        // Option 1: Simplest solution - let middleware handle routing
-        router.replace("/dashboard")
-        
-        /* Option 2: Get user role from API after login
-        const userResponse = await fetch('/api/auth/session')
-        const userData = await userResponse.json()
-        const role = userData?.user?.role
-        const redirectPath = getRedirectPath(role)
-        router.replace(redirectPath)
-        */
-      }
+      // No code will run after this point in the function
+      // as signIn with redirect:true causes a browser redirect
     } catch (error) {
-      setError('An unexpected error occurred');
-    } finally {
+      // This will only catch errors before the redirect
+      setError('An unexpected error occurred')
       setIsLoading(false)
     }
   }

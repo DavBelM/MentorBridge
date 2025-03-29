@@ -26,6 +26,7 @@ type User = {
   id: string
   email: string
   fullname: string
+  username?: string
   role: string
   isApproved: boolean
   profile: Profile | null

@@ -28,8 +28,10 @@ export default function AdminDashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (!session?.user || session.user.role !== "ADMIN") {
-      router.push("/login")
+    // Only redirect if session is loaded AND user is not admin
+    if (session && session.user && session.user.role !== "ADMIN") {
+      console.log("Non-admin tried to access admin dashboard:", session.user)
+      router.push("/dashboard")
     }
   }, [session, router])
 
@@ -40,7 +42,7 @@ export default function AdminDashboardLayout({
   const navigation = [
     { name: "Overview", href: "/dashboard/admin", icon: LayoutDashboard },
     { name: "Users", href: "/dashboard/admin/users", icon: Users },
-    { name: "Mentor Approval", href: "/dashboard/admin/mentor-approval", icon: UserCheck },
+    { name: "Mentor Approval", href: "/dashboard/admin/mentor-approval-list", icon: UserCheck },
     { name: "Platform Settings", href: "/dashboard/admin/settings", icon: Settings },
   ]
 
@@ -143,4 +145,4 @@ export default function AdminDashboardLayout({
       </div>
     </div>
   )
-} 
+}

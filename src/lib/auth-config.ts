@@ -1,13 +1,21 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { prisma } from "./prisma"
-import bcrypt from "bcryptjs"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import { compare } from "bcrypt"
+import { User } from "@prisma/client"
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined")
 }
 
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -15,59 +23,56 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials: Record<"email" | "password", string> | undefined) {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error("Please enter your email and password")
-          }
+      async authorize(credentials: Record<"email" | "password", string> | undefined, req) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
 
-          const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email
-            }
-          })
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        }) as (User & { password: string }) | null
 
-          if (!user || !user.password) {
-            throw new Error("No user found with this email")
-          }
+        if (!user) {
+          return null
+        }
 
-          const passwordMatch = await bcrypt.compare(credentials.password, user.password)
+        const passwordMatch = await compare(credentials.password, user.password)
+        if (!passwordMatch) {
+          return null
+        }
 
-          if (!passwordMatch) {
-            throw new Error("Invalid password")
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            fullname: user.fullname || "", // Provide a default empty string if null
-            role: user.role,
-            isApproved: user.isApproved
-          }
-        } catch (error) {
-          console.error("Auth error:", error)
-          throw error
+        return {
+          id: user.id.toString(),
+          email: user.email,
+          fullname: user.fullname || "", // Ensure fullname is never null
+          role: user.role,
+          isApproved: user.isApproved
         }
       }
     })
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // Add user data to token when created
+      // When signing in, add user data to token
       if (user) {
         token.id = user.id
+        token.email = user.email
         token.role = user.role
         token.isApproved = user.isApproved
+        token.name = user.name || ''
       }
+      console.log("JWT callback generating token:", token)
       return token
     },
     async session({ session, token }) {
-      // Add token data to session
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.isApproved = token.isApproved as boolean
+      // Add token data to session for client
+      if (session?.user) {
+        session.user.id = token.id
+        session.user.role = token.role
+        session.user.isApproved = token.isApproved
+        session.user.name = token.name || token.name
       }
+      console.log("Session callback generating session:", session)
       return session
     },
     async redirect({ url, baseUrl }) {
@@ -91,14 +96,8 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login",
-    signOut: "/login"
+    error: "/login"
   },
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  secret: process.env.JWT_SECRET,
   debug: process.env.NODE_ENV === "development",
   events: {
     async signIn({ user, account, profile, isNewUser }) {
@@ -106,6 +105,19 @@ export const authOptions: NextAuthOptions = {
     },
     async signOut({ session, token }) {
       console.log("Sign out event:", { session, token })
+    }
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      }
     }
   }
 }

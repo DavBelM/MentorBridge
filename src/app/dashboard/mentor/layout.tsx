@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -32,7 +32,7 @@ export default function MentorDashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -43,8 +43,19 @@ export default function MentorDashboardLayout({
     { id: 2, message: "Upcoming session with Jane Smith", read: false },
   ])
 
-  if (!session?.user || session.user.role !== "MENTOR") {
-    router.push("/login")
+  useEffect(() => {
+    console.log("Dashboard layout - session:", session)
+    
+    if (status === "unauthenticated") {
+      router.push("/login")
+    }
+  }, [session, status, router])
+  
+  if (status === "loading") {
+    return <div>Loading...</div>
+  }
+  
+  if (!session) {
     return null
   }
 
@@ -209,4 +220,4 @@ export default function MentorDashboardLayout({
       </div>
     </div>
   )
-} 
+}
