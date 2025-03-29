@@ -162,7 +162,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground hidden lg:block">
               Manage your platform and users
             </span>
           </div>

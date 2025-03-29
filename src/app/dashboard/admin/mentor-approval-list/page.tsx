@@ -88,42 +88,44 @@ export default function MentorApprovalList() {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Submitted At</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {mentors.map((mentor) => (
-          <TableRow key={mentor.id}>
-            <TableCell>{mentor.fullname}</TableCell>
-            <TableCell>{mentor.email}</TableCell>
-            <TableCell>
-              {new Date(mentor.submittedForApprovalAt).toLocaleDateString()}
-            </TableCell>
-            <TableCell className="space-x-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => handleApproval(mentor.id, "approve")}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleApproval(mentor.id, "reject")}
-              >
-                Reject
-              </Button>
-            </TableCell>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Submitted At</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {mentors.map((mentor) => (
+            <TableRow key={mentor.id}>
+              <TableCell>{mentor.fullname}</TableCell>
+              <TableCell>{mentor.email}</TableCell>
+              <TableCell>
+                {new Date(mentor.submittedForApprovalAt).toLocaleDateString()}
+              </TableCell>
+              <TableCell className="space-x-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => handleApproval(mentor.id, "approve")}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleApproval(mentor.id, "reject")}
+                >
+                  Reject
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
-} 
+}

@@ -107,11 +107,11 @@ export default function UsersPage() {
           <div className="space-y-4">
             {allUsers.map(user => (
               <Card key={user.id}>
-                <CardHeader>
-                  <CardTitle>{user.fullname}</CardTitle>
-                  <CardDescription>{user.email}</CardDescription>
+                <CardHeader className="p-4 md:p-6">
+                  <CardTitle className="text-base md:text-lg truncate">{user.fullname}</CardTitle>
+                  <CardDescription className="truncate">{user.email}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 md:p-6 pt-0">
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Shield className="h-4 w-4 text-muted-foreground" />
@@ -133,7 +133,7 @@ export default function UsersPage() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-end space-x-2">
+                <CardFooter className="p-4 md:p-6 pt-0 flex flex-wrap gap-2">
                   {user.role !== "ADMIN" && (
                     <Button
                       variant={user.isApproved ? "destructive" : "default"}
@@ -173,11 +173,11 @@ export default function UsersPage() {
               .filter(user => user.role === "MENTOR")
               .map(mentor => (
                 <Card key={mentor.id}>
-                  <CardHeader>
-                    <CardTitle>{mentor.fullname}</CardTitle>
-                    <CardDescription>{mentor.email}</CardDescription>
+                  <CardHeader className="p-4 md:p-6">
+                    <CardTitle className="text-base md:text-lg truncate">{mentor.fullname}</CardTitle>
+                    <CardDescription className="truncate">{mentor.email}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 md:p-6 pt-0">
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <Shield className="h-4 w-4 text-muted-foreground" />
@@ -193,7 +193,7 @@ export default function UsersPage() {
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex justify-end space-x-2">
+                  <CardFooter className="p-4 md:p-6 pt-0 flex flex-wrap gap-2">
                     <Button
                       variant={mentor.isApproved ? "destructive" : "default"}
                       onClick={() => handleUpdateUserStatus(mentor.id, !mentor.isApproved)}
@@ -221,11 +221,11 @@ export default function UsersPage() {
               .filter(user => user.role === "MENTEE")
               .map(mentee => (
                 <Card key={mentee.id}>
-                  <CardHeader>
-                    <CardTitle>{mentee.fullname}</CardTitle>
-                    <CardDescription>{mentee.email}</CardDescription>
+                  <CardHeader className="p-4 md:p-6">
+                    <CardTitle className="text-base md:text-lg truncate">{mentee.fullname}</CardTitle>
+                    <CardDescription className="truncate">{mentee.email}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 md:p-6 pt-0">
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <Shield className="h-4 w-4 text-muted-foreground" />
@@ -241,7 +241,7 @@ export default function UsersPage() {
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex justify-end space-x-2">
+                  <CardFooter className="p-4 md:p-6 pt-0 flex flex-wrap gap-2">
                     <Button
                       variant={mentee.isApproved ? "destructive" : "default"}
                       onClick={() => handleUpdateUserStatus(mentee.id, !mentee.isApproved)}
@@ -269,11 +269,11 @@ export default function UsersPage() {
               .filter(user => user.role === "ADMIN")
               .map(admin => (
                 <Card key={admin.id}>
-                  <CardHeader>
-                    <CardTitle>{admin.fullname}</CardTitle>
-                    <CardDescription>{admin.email}</CardDescription>
+                  <CardHeader className="p-4 md:p-6">
+                    <CardTitle className="text-base md:text-lg truncate">{admin.fullname}</CardTitle>
+                    <CardDescription className="truncate">{admin.email}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 md:p-6 pt-0">
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <Shield className="h-4 w-4 text-muted-foreground" />

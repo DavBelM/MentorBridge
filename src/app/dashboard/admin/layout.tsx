@@ -35,6 +35,11 @@ export default function AdminDashboardLayout({
     }
   }, [session, router])
 
+  // Close mobile menu when path changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
+
   if (!session?.user || session.user.role !== "ADMIN") {
     return null
   }
@@ -47,13 +52,14 @@ export default function AdminDashboardLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[100dvh] bg-background flex flex-col md:flex-row">
       {/* Mobile header */}
-      <div className="md:hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
+      <div className="md:hidden sticky top-0 z-10 bg-background border-b">
+        <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-md hover:bg-accent"
+            aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -64,48 +70,15 @@ export default function AdminDashboardLayout({
           <h1 className="text-xl font-bold">Admin Dashboard</h1>
           <div className="w-6" /> {/* Spacer for alignment */}
         </div>
-        {isMobileMenuOpen && (
-          <div className="border-b bg-background">
-            <nav className="px-2 py-3 space-y-1">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-md",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.name}
-                  </Link>
-                )
-              })}
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
-              >
-                <LogOut className="mr-3 h-5 w-5" />
-                Logout
-              </button>
-            </nav>
-          </div>
-        )}
-      </div>
-
-      {/* Desktop layout */}
-      <div className="hidden md:flex md:h-screen">
-        {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 border-r bg-background">
-          <div className="flex h-16 items-center px-4 border-b">
-            <h1 className="text-xl font-bold">Admin Dashboard</h1>
-          </div>
-          <nav className="flex-1 space-y-1 p-2">
+        
+        {/* Mobile navigation menu with smooth transition */}
+        <div 
+          className={cn(
+            "border-b bg-background overflow-hidden transition-all duration-200 ease-in-out",
+            isMobileMenuOpen ? "max-h-96" : "max-h-0"
+          )}
+        >
+          <nav className="px-2 py-3 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -113,7 +86,7 @@ export default function AdminDashboardLayout({
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-md",
+                    "flex items-center px-3 py-3 text-sm font-medium rounded-md",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -124,24 +97,58 @@ export default function AdminDashboardLayout({
                 </Link>
               )
             })}
-          </nav>
-          <div className="border-t p-4">
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex items-center w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+              className="flex items-center w-full px-3 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
             >
               <LogOut className="mr-3 h-5 w-5" />
               Logout
             </button>
-          </div>
+          </nav>
         </div>
+      </div>
 
-        {/* Main content */}
-        <div className="flex-1 overflow-auto">
-          <main className="p-6">
-            {children}
-          </main>
+      {/* Desktop sidebar */}
+      <div className="hidden md:block md:w-64 md:flex-shrink-0 md:border-r bg-background">
+        <div className="flex h-16 items-center px-4 border-b">
+          <h1 className="text-xl font-bold">Admin Dashboard</h1>
         </div>
+        <nav className="flex-1 space-y-1 p-2">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center px-3 py-2 text-sm font-medium rounded-md",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+        <div className="border-t p-4">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+          >
+            <LogOut className="mr-3 h-5 w-5" />
+            Logout
+          </button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 overflow-auto">
+        <main className="p-3 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   )
