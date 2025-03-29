@@ -1,37 +1,34 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { withAuth } from 'next-auth/middleware'
 
-// Implement route protection with NextAuth middleware
+// Define public paths that don't require authentication
+const publicPaths = ['/login', '/register', '/api/auth']
+
+// Export withAuth middleware with your custom function inside
 export default withAuth(
-  // `withAuth` augments your Request with the user's token
-  function middleware(req) {
-    const { pathname } = req.nextUrl
-    const { token } = req.nextauth
-    
-    // Allow access to authentication routes
-    if (pathname.startsWith('/api/auth')) {
-      return NextResponse.next()
-    }
+  function middleware(request) {
+    const path = request.nextUrl.pathname
     
     // If user is authenticated but accessing login page, redirect to dashboard
-    if (pathname === '/login' && token) {
-      const url = new URL(`/dashboard/${(token.role as string).toLowerCase()}`, req.url)
+    if (path === '/login' && request.nextauth?.token) {
+      const url = new URL(`/dashboard/${(request.nextauth.token.role as string).toLowerCase()}`, request.url)
       return NextResponse.redirect(url)
     }
     
     // Role-based access for dashboard routes
-    if (pathname.startsWith('/dashboard/mentor') && token?.role !== 'MENTOR') {
-      const url = new URL('/dashboard/mentee', req.url)
+    if (path.startsWith('/dashboard/mentor') && request.nextauth?.token?.role !== 'MENTOR') {
+      const url = new URL('/dashboard/mentee', request.url)
       return NextResponse.redirect(url)
     }
     
-    if (pathname.startsWith('/dashboard/mentee') && token?.role !== 'MENTEE') {
-      const url = new URL('/dashboard/mentor', req.url)
+    if (path.startsWith('/dashboard/mentee') && request.nextauth?.token?.role !== 'MENTEE') {
+      const url = new URL('/dashboard/mentor', request.url)
       return NextResponse.redirect(url)
     }
     
-    if (pathname.startsWith('/dashboard/admin') && token?.role !== 'ADMIN') {
-      const url = new URL('/login', req.url)
+    if (path.startsWith('/dashboard/admin') && request.nextauth?.token?.role !== 'ADMIN') {
+      const url = new URL('/login', request.url)
       return NextResponse.redirect(url)
     }
     
@@ -39,13 +36,20 @@ export default withAuth(
   },
   {
     callbacks: {
-      // Only run middleware on matching routes
-      authorized: ({ token }) => !!token
+      authorized: ({ token, req }) => {
+        const path = req.nextUrl.pathname
+        // Allow public paths even without token
+        if (publicPaths.some(p => path.startsWith(p) || path === p)) {
+          return true
+        }
+        // Otherwise require token
+        return !!token
+      }
     }
   }
 )
 
-// Update matcher to include all routes you want to protect
+// Update matcher config
 export const config = {
   matcher: [
     '/dashboard/:path*',

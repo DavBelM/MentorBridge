@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signIn } from "next-auth/react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,14 +14,37 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams();
+  
+  // Get error message from URL if it exists
+  useEffect(() => {
+    const errorParam = searchParams?.get('error');
+    if (errorParam) {
+      console.log("Error from URL:", errorParam);
+      // Check if the error is specifically 'undefined' string
+      if (errorParam === 'undefined') {
+        // This is a session/routing issue, not a credentials issue
+        setError('Session error. Please try again.');
+      } else {
+        const errorMessages: Record<string, string> = {
+          'CredentialsSignin': 'Invalid email or password',
+          'default': 'An error occurred during sign in'
+        };
+        setError(errorMessages[errorParam] || errorMessages.default);
+      }
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError('');
 
     try {
+      // Add callbackUrl to capture the user's role in the response
       const result = await signIn("credentials", {
         email,
         password,
@@ -29,17 +52,26 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        toast.error(result.error)
+        setError('Invalid email or password');
         return
       }
 
       if (result?.ok) {
         toast.success("Login successful!")
-        const redirectPath = getRedirectPath(session?.user?.role as string)
+        
+        // Option 1: Simplest solution - let middleware handle routing
+        router.replace("/dashboard")
+        
+        /* Option 2: Get user role from API after login
+        const userResponse = await fetch('/api/auth/session')
+        const userData = await userResponse.json()
+        const role = userData?.user?.role
+        const redirectPath = getRedirectPath(role)
         router.replace(redirectPath)
+        */
       }
     } catch (error) {
-      toast.error("An unexpected error occurred")
+      setError('An unexpected error occurred');
     } finally {
       setIsLoading(false)
     }
@@ -75,6 +107,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 mb-4 text-sm text-red-800 bg-red-100 rounded-lg">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 Email

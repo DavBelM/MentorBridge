@@ -53,14 +53,18 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      // Add user data to token when created
       if (user) {
+        token.id = user.id
         token.role = user.role
         token.isApproved = user.isApproved
       }
       return token
     },
     async session({ session, token }) {
+      // Add token data to session
       if (session.user) {
+        session.user.id = token.id as string
         session.user.role = token.role as string
         session.user.isApproved = token.isApproved as boolean
       }

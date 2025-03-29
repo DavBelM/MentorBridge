@@ -164,18 +164,20 @@ export async function PUT(request: Request) {
     });
     
     // Update the profile
+    const updateData = {
+      bio: formData.bio !== undefined ? formData.bio : existingProfile.bio,
+      location: formData.location !== undefined ? formData.location : existingProfile.location,
+      linkedin: formData.linkedin !== undefined ? formData.linkedin : existingProfile.linkedin,
+      twitter: formData.twitter !== undefined ? formData.twitter : existingProfile.twitter,
+      skills: formData.skills !== undefined ? formData.skills : existingProfile.skills,
+      education: formData.education !== undefined ? formData.education : existingProfile.education,
+      availability: formData.availability !== undefined ? formData.availability : existingProfile.availability,
+      profilePicture: profileImageUrl
+    };
+
     const updatedProfile = await prisma.profile.update({
       where: { userId },
-      data: {
-        bio: formData.bio || existingProfile.bio,
-        location: formData.location || existingProfile.location,
-        linkedin: formData.linkedin || existingProfile.linkedin,
-        twitter: formData.twitter || existingProfile.twitter,
-        skills: formData.skills || existingProfile.skills,
-        education: formData.education || existingProfile.education,
-        availability: formData.availability || existingProfile.availability,
-        profilePicture: profileImageUrl
-      }
+      data: updateData
     });
     
     // Also update any user fields that were provided
