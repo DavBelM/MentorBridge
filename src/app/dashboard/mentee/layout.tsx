@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -43,6 +43,27 @@ export default function MenteeDashboardLayout({
     { id: 2, message: "Session reminder for tomorrow", read: false },
     { id: 3, message: "New resource available", read: false },
   ])
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      try {
+        const response = await fetch("/api/messages/unread-count");
+        if (!response.ok) throw new Error("Failed to fetch unread count");
+        const data = await response.json();
+        setUnreadMessageCount(data.count);
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    }
+    
+    if (session?.user?.id) {
+      fetchUnreadCount();
+      
+      const interval = setInterval(fetchUnreadCount, 30000); // every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [session]);
 
   if (!session?.user || session.user.role !== "MENTEE") {
     router.push("/login")
@@ -51,7 +72,6 @@ export default function MenteeDashboardLayout({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    // Implement search functionality
     toast({
       title: "Search",
       description: `Searching for: ${searchQuery}`,
@@ -59,7 +79,6 @@ export default function MenteeDashboardLayout({
   }
 
   const handleNotificationClick = () => {
-    // Implement notification panel
     toast({
       title: "Notifications",
       description: "Notification panel coming soon",
@@ -71,8 +90,17 @@ export default function MenteeDashboardLayout({
     { name: "My Profile", href: "/dashboard/mentee/profile", icon: User },
     { name: "Find Mentors", href: "/dashboard/mentee/find-mentors", icon: Search },
     { name: "My Mentors", href: "/dashboard/mentee/my-mentors", icon: Users },
-    { name: "Sessions", href: "/dashboard/mentee/sessions", icon: Calendar },
-    { name: "Messages", href: "/dashboard/mentee/messages", icon: MessageSquare },
+    { 
+      name: "Sessions", 
+      href: "/dashboard/mentee/sessions", 
+      icon: Calendar 
+    },
+    { 
+      name: "Messages", 
+      href: "/dashboard/mentee/messages", 
+      icon: MessageSquare,
+      notification: unreadMessageCount > 0 ? unreadMessageCount : undefined
+    },
     { name: "Resources", href: "/dashboard/mentee/resources", icon: BookOpen },
     { name: "Mental Health", href: "/dashboard/mentee/mental-health", icon: Heart },
     { name: "Settings", href: "/dashboard/mentee/settings", icon: Settings },
@@ -80,7 +108,6 @@ export default function MenteeDashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile header */}
       <div className="md:hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <button
@@ -125,7 +152,17 @@ export default function MenteeDashboardLayout({
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
+                    <div className="relative">
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.notification && (
+                        <Badge 
+                          variant="destructive" 
+                          className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                        >
+                          {item.notification}
+                        </Badge>
+                      )}
+                    </div>
                     {item.name}
                   </Link>
                 )
@@ -142,9 +179,7 @@ export default function MenteeDashboardLayout({
         )}
       </div>
 
-      {/* Desktop layout */}
       <div className="hidden md:flex md:h-screen">
-        {/* Sidebar */}
         <div className="w-64 flex-shrink-0 border-r bg-background">
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <h1 className="text-xl font-bold">Mentee Dashboard</h1>
@@ -185,7 +220,17 @@ export default function MenteeDashboardLayout({
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
+                  <div className="relative">
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.notification && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {item.notification}
+                      </Badge>
+                    )}
+                  </div>
                   {item.name}
                 </Link>
               )
@@ -202,7 +247,6 @@ export default function MenteeDashboardLayout({
           </div>
         </div>
 
-        {/* Main content */}
         <div className="flex-1 overflow-auto">
           <main className="p-6">
             {children}
@@ -211,4 +255,4 @@ export default function MenteeDashboardLayout({
       </div>
     </div>
   )
-} 
+}

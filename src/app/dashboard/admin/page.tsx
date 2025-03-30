@@ -147,6 +147,40 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleToggleUserStatus = async (userId: number, currentStatus: boolean) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/admin/users/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, active: !currentStatus })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${currentStatus ? "deactivate" : "activate"} user`);
+      }
+
+      // Update the allUsers state
+      setAllUsers(prev => prev.map(user => 
+        user.id === userId ? {...user, isApproved: !currentStatus} : user
+      ));
+      
+      toast({
+        title: "Success",
+        description: `User ${currentStatus ? "deactivated" : "activated"} successfully`
+      });
+    } catch (error) {
+      console.error("Error toggling user status:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update user status`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (status === "loading" || !stats) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -335,10 +369,10 @@ export default function AdminDashboard() {
                         <CardFooter className="flex justify-end space-x-2">
                           <Button
                             variant={mentor.isApproved ? "destructive" : "default"}
-                            onClick={() => handleApproveMentor(mentor.id)}
+                            onClick={() => handleToggleUserStatus(mentor.id, mentor.isApproved)}
                             disabled={isLoading}
                           >
-                            {mentor.isApproved ? "Deactivate" : "Approve"}
+                            {mentor.isApproved ? "Deactivate" : "Activate"}
                           </Button>
                         </CardFooter>
                       </Card>
@@ -385,7 +419,7 @@ export default function AdminDashboard() {
                         <CardFooter className="flex justify-end space-x-2">
                           <Button
                             variant={mentee.isApproved ? "destructive" : "default"}
-                            onClick={() => handleApproveMentor(mentee.id)}
+                            onClick={() => handleToggleUserStatus(mentee.id, mentee.isApproved)}
                             disabled={isLoading}
                           >
                             {mentee.isApproved ? "Deactivate" : "Activate"}
@@ -440,7 +474,7 @@ export default function AdminDashboard() {
                         {user.role !== "ADMIN" && (
                           <Button
                             variant={user.isApproved ? "destructive" : "default"}
-                            onClick={() => handleApproveMentor(user.id)}
+                            onClick={() => handleToggleUserStatus(user.id, user.isApproved)}
                             disabled={isLoading}
                           >
                             {user.isApproved ? "Deactivate" : "Activate"}
@@ -457,4 +491,4 @@ export default function AdminDashboard() {
       </main>
     </div>
   )
-} 
+}
