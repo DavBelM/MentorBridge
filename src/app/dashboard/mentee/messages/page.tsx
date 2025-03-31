@@ -152,7 +152,12 @@ export default function MessagesPage() {
         const response = await fetch("/api/messages/threads")
         if (!response.ok) throw new Error("Failed to fetch threads")
         const data = await response.json()
-        setThreads(data)
+        
+        // Add this debugging to see the actual structure
+        console.log("API response:", data)
+        
+        // Check if data is an array or if it has a threads property
+        setThreads(Array.isArray(data) ? data : data.threads || [])
       } catch (error) {
         console.error("Error fetching threads:", error)
         toast({

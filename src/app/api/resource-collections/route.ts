@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-config"
-import prisma from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -12,15 +12,25 @@ export async function GET() {
   try {
     const collections = await prisma.resourceCollection.findMany({
       include: {
-        createdBy: true,
-        resources: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullname: true
+          }
+        },
+        _count: {
+          select: {
+            resources: true
+          }
+        }
       },
       orderBy: {
-        createdAt: "desc",
-      },
+        createdAt: "desc"
+      }
     })
 
-    return NextResponse.json(collections)
+    // Return properly structured response
+    return NextResponse.json({ collections })
   } catch (error) {
     console.error("Failed to fetch collections:", error)
     return new NextResponse("Internal Server Error", { status: 500 })
@@ -56,4 +66,4 @@ export async function POST(request: Request) {
     console.error("Failed to create collection:", error)
     return new NextResponse("Internal Server Error", { status: 500 })
   }
-} 
+}
