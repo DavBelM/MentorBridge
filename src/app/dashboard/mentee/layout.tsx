@@ -108,6 +108,7 @@ export default function MenteeDashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Mobile view */}
       <div className="md:hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <button
@@ -177,8 +178,15 @@ export default function MenteeDashboardLayout({
             </nav>
           </div>
         )}
+
+        {/* This is the important div for rendering children on mobile */}
+        <div className="pt-4">
+          {children}
+        </div>
+
       </div>
 
+      {/* Desktop view */}
       <div className="hidden md:flex md:h-screen">
         <div className="w-64 flex-shrink-0 border-r bg-background">
           <div className="flex h-16 items-center justify-between px-4 border-b">
@@ -247,6 +255,7 @@ export default function MenteeDashboardLayout({
           </div>
         </div>
 
+        {/* Main content area */}
         <div className="flex-1 overflow-auto">
           <main className="p-6">
             {children}
