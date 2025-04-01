@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-config";
 import { prisma } from "@/lib/prisma";
-import path from "path";
-import fs from "fs";
-import { writeFile } from "fs/promises";
-import { join } from "path";
+import fs from 'fs';
+import path from 'path';
+import { promises as fsPromises } from 'fs';
+const { writeFile } = fsPromises;
 
 // Helper function to parse form data with files
 async function parseFormData(request: Request) {
@@ -102,101 +102,109 @@ export async function GET(request: NextRequest) {
 // PUT - Update profile
 export async function PUT(request: Request) {
   try {
+    // Get user session
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     
+    // Get user ID from session
     const userId = session.user.id;
     
-    // Parse the form data
-    const { fields, files } = await parseFormData(request);
+    // Parse the multipart form data including any files
+    const { files, fields } = await parseFormData(request);
     
-    // Check if the user already has a profile
+    // Check if profile exists
     const existingProfile = await prisma.profile.findUnique({
       where: { userId },
     });
     
-    if (!existingProfile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Handle profile picture upload
-    let profileImageUrl = existingProfile.profilePicture;
-    
+    // Handle file upload if provided
+    let profilePictureUrl = existingProfile?.profilePicture;
     if (files.profilePicture) {
-      const file = files.profilePicture;
-      
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public/uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      try {
+        profilePictureUrl = await uploadFile(files.profilePicture);
+      } catch (uploadError) {
+        console.error("File upload error:", uploadError);
+        return new NextResponse(
+          JSON.stringify({ error: "Failed to upload profile picture" }), 
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
       }
-      
-      // Generate a unique filename
-      const fileExt = path.extname(file.name || '.jpg');
-      const newFilename = `${userId}-${Date.now()}${fileExt}`;
-      const newPath = path.join(uploadsDir, newFilename);
-      
-      // Write the file to the uploads directory
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      await writeFile(newPath, buffer);
-      
-      // Store the relative path in the database
-      profileImageUrl = `/uploads/${newFilename}`;
-      
-      // Also update user.image for consistency
-      await prisma.user.update({
-        where: { id: userId },
-        data: { image: profileImageUrl }
-      });
     }
     
-    // Extract form values safely, converting arrays as needed
-    const formData: Record<string, any> = {};
-    Object.keys(fields).forEach(key => {
-      formData[key] = fields[key];
-    });
-    
-    // Update the profile
-    const updateData = {
-      bio: formData.bio !== undefined ? formData.bio : existingProfile.bio,
-      location: formData.location !== undefined ? formData.location : existingProfile.location,
-      linkedin: formData.linkedin !== undefined ? formData.linkedin : existingProfile.linkedin,
-      twitter: formData.twitter !== undefined ? formData.twitter : existingProfile.twitter,
-      skills: formData.skills !== undefined ? formData.skills : existingProfile.skills,
-      education: formData.education !== undefined ? formData.education : existingProfile.education,
-      availability: formData.availability !== undefined ? formData.availability : existingProfile.availability,
-      profilePicture: profileImageUrl
+    // Initialize data object with profile picture URL if available
+    const data: Record<string, any> = {
+      ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
     };
-
-    const updatedProfile = await prisma.profile.update({
-      where: { userId },
-      data: updateData
-    });
     
-    // Also update any user fields that were provided
-    if (formData.fullname || formData.username) {
-      await prisma.user.update({
-        where: { id: userId },
+    // Add common fields for all roles
+    if (fields.bio) data.bio = fields.bio;
+    if (fields.location) data.location = fields.location;
+    if (fields.linkedin) data.linkedin = fields.linkedin;
+    if (fields.twitter) data.twitter = fields.twitter;
+    
+    // Add role-specific fields
+    if (session.user.role === "MENTOR") {
+      if (fields.skills) data.skills = fields.skills;
+      if (fields.experience) data.experience = fields.experience;
+      if (fields.availability) data.availability = fields.availability;
+    } else if (session.user.role === "MENTEE") {
+      if (fields.interests) data.interests = fields.interests;
+      if (fields.learningGoals) data.learningGoals = fields.learningGoals;
+    }
+    
+    // Update or create profile
+    let profile;
+    if (existingProfile) {
+      profile = await prisma.profile.update({
+        where: { userId },
+        data,
+      });
+    } else {
+      profile = await prisma.profile.create({
         data: {
-          fullname: formData.fullname,
-          username: formData.username
-        }
+          ...data,
+          userId,
+        },
       });
     }
     
-    return NextResponse.json({ profile: updatedProfile });
+    return NextResponse.json(profile);
   } catch (error) {
-    console.error('Error updating profile:', error);
-    return NextResponse.json(
-      { error: 'Failed to update profile' },
-      { status: 500 }
+    console.error("Error updating profile:", error);
+    // Return proper JSON error
+    return new NextResponse(
+      JSON.stringify({ error: "Internal Server Error" }), 
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
+  }
+}
+
+// Helper function for file upload
+async function uploadFile(file: File) {
+  try {
+    // For development, store in public directory
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Create unique filename
+    const uniqueFilename = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+    const filePath = path.join(uploadsDir, uniqueFilename);
+    
+    // Convert file to buffer and save
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(filePath, buffer);
+    
+    // Return the URL that can be accessed publicly
+    return `/uploads/${uniqueFilename}`;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    throw new Error("Failed to upload profile picture");
   }
 }

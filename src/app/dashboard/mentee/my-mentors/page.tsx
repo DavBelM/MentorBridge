@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MessageSquare, UserX, CheckCircle, Clock, AlertCircle } from "lucide-react"
+import { Calendar, MessageSquare, UserX, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -34,7 +34,9 @@ export default function MyMentorsPage() {
   const { toast } = useToast()
   const [connections, setConnections] = useState<Connection[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("active")
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam || "active")
   const [processingId, setProcessingId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -42,12 +44,23 @@ export default function MyMentorsPage() {
   }, [session])
 
   const fetchConnections = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const response = await fetch("/api/connections?role=MENTEE")
-      if (!response.ok) throw new Error("Failed to fetch connections")
-      const data = await response.json()
-      setConnections(data)
+      const response = await fetch("/api/matching?role=MENTEE");
+      if (!response.ok) throw new Error("Failed to fetch connections");
+      const data = await response.json();
+      
+      // Set the data
+      setConnections(data);
+      
+      // If we have a connection and tab is the default "active", 
+      // but there are no active connections yet, switch to "pending" tab
+      if (activeTab === "active" && 
+          data.filter((conn: Connection) => conn.status === "ACCEPTED").length === 0 && 
+          data.filter((conn: Connection) => conn.status === "PENDING").length > 0) {
+        setActiveTab("pending");
+        router.push("/dashboard/mentee/my-mentors?tab=pending", { scroll: false });
+      }
     } catch (error) {
       console.error("Error fetching connections:", error)
       toast({
@@ -124,9 +137,26 @@ export default function MyMentorsPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <h1 className="text-2xl font-bold">My Mentors</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">My Mentors</h1>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchConnections}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(value) => {
+          setActiveTab(value);
+          router.push(`/dashboard/mentee/my-mentors?tab=${value}`, { scroll: false });
+        }}
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="active">
             Active Connections

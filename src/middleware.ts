@@ -12,14 +12,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Get token with all required options
+  // Fix: Simplify token check and make it match auth-config
   const token = await getToken({ 
     req: request, 
-    secret: process.env.NEXTAUTH_SECRET,
-    secureCookie: process.env.NODE_ENV === 'production',
-    cookieName: process.env.NODE_ENV === 'production' 
-      ? '__Secure-next-auth.session-token' 
-      : 'next-auth.session-token'
+    secret: process.env.NEXTAUTH_SECRET
   })
   
   console.log('Middleware for path:', path)

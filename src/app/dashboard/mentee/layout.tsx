@@ -1,5 +1,7 @@
 "use client"
 
+"use client"
+
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -33,7 +35,7 @@ export default function MenteeDashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -66,8 +68,19 @@ export default function MenteeDashboardLayout({
     }
   }, [session]);
 
-  if (!session?.user || session.user.role !== "MENTEE") {
-    router.push("/login")
+  useEffect(() => {
+    if (status === "unauthenticated" || (session?.user && session.user.role !== "MENTEE")) {
+      router.push("/login")
+    }
+  }, [session, status, router])
+
+  if (status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  }
+
+  if (status === "unauthenticated" || (session?.user && session.user.role !== "MENTEE")) {
     return null
   }
 

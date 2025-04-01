@@ -1,5 +1,7 @@
 "use client"
 
+"use client"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -11,12 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type Mentor = {
-  id: number
+  id: string  // Change from number to string
   fullname: string
   role: string
   profile?: {
     bio?: string | null
-    skills?: string | null
+    skills?: string[] | null  // Make sure this is string[]
     location?: string | null
     profilePicture?: string | null
   }
@@ -29,15 +31,15 @@ export default function FindMentorsPage() {
   const [mentors, setMentors] = useState<Mentor[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [skillFilter, setSkillFilter] = useState("")
-  const [connecting, setConnecting] = useState<{ [key: number]: boolean }>({})
+  const [connecting, setConnecting] = useState<{ [key: string]: boolean }>({})
 
   useEffect(() => {
     async function fetchMentors() {
       try {
-        const response = await fetch("/api/users?role=MENTOR")
+        const response = await fetch("/api/mentors")
         if (!response.ok) throw new Error("Failed to fetch mentors")
         const data = await response.json()
-        setMentors(data)
+        setMentors(data.mentors)
       } catch (error) {
         console.error("Error fetching mentors:", error)
       } finally {
@@ -48,7 +50,7 @@ export default function FindMentorsPage() {
     fetchMentors()
   }, [])
 
-  const handleConnect = async (mentorId: number) => {
+  const handleConnect = async (mentorId: string) => {
     if (!session?.user?.id) return
     
     setConnecting(prev => ({ ...prev, [mentorId]: true }))
@@ -60,6 +62,7 @@ export default function FindMentorsPage() {
         body: JSON.stringify({
           mentorId,
           menteeId: session.user.id,
+          message: "I'd like to connect with you as my mentor.", // Add default message
         }),
       })
       
@@ -74,20 +77,49 @@ export default function FindMentorsPage() {
     }
   }
 
-  const handleViewProfile = (mentorId: number) => {
+  const handleViewProfile = (mentorId: string) => {
     router.push(`/dashboard/mentee/find-mentors/${mentorId}`)
   }
 
   const filteredMentors = mentors.filter(mentor => {
     const matchesSearch = mentor.fullname.toLowerCase().includes(searchQuery.toLowerCase())
+    
     const matchesSkill = !skillFilter || 
-      (mentor.profile?.skills && mentor.profile.skills.toLowerCase().includes(skillFilter.toLowerCase()))
+      (mentor.profile?.skills && (
+        // Handle skills as array
+        Array.isArray(mentor.profile.skills) 
+          ? mentor.profile.skills.some(skill => 
+              typeof skill === 'string' ? 
+                skill.toLowerCase().includes(skillFilter.toLowerCase()) :
+                false
+            )
+          // Handle skills as string (fallback)
+          : typeof mentor.profile.skills === 'string' 
+              ? mentor.profile.skills.toLowerCase().includes(skillFilter.toLowerCase())
+              : false
+      ))
+    
     return matchesSearch && matchesSkill
   })
 
-  const parsedSkills = (skills?: string | null) => {
-    if (!skills) return []
-    return skills.split(',').map(s => s.trim()).filter(Boolean)
+  interface SkillsData {
+    skills: string | string[] | undefined | null;
+  }
+
+  function parsedSkills(skills: string | string[] | undefined | null): string[] {
+    // If no skills, return empty array
+    if (!skills) return [];
+    
+    // If skills is already an array, use it directly
+    if (Array.isArray(skills)) return skills;
+    
+    // If it's a string (from form input perhaps), then split it
+    if (typeof skills === 'string') {
+      return skills.split(',').map(skill => skill.trim());
+    }
+    
+    // Fallback to empty array for any other case
+    return [];
   }
 
   return (

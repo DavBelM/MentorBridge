@@ -105,16 +105,31 @@ export async function GET(req: Request) {
     const connectionId = searchParams.get("connectionId")
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
+    const role = searchParams.get("role")  // Get the role parameter
 
     let where = {}
     if (connectionId) {
       where = { connectionId }
     } else {
+      // Filter by connection properties, not directly on session
       where = {
-        OR: [
-          { mentorId: session.user.id },
-          { menteeId: session.user.id },
-        ],
+        connection: {
+          OR: [
+            { mentorId: session.user.id },
+            { menteeId: session.user.id },
+          ]
+        }
+      }
+      
+      // If role is specified, filter by that role
+      if (role === "MENTOR") {
+        where = {
+          connection: { mentorId: session.user.id }
+        }
+      } else if (role === "MENTEE") {
+        where = {
+          connection: { menteeId: session.user.id }
+        }
       }
     }
 
@@ -133,15 +148,43 @@ export async function GET(req: Request) {
       include: {
         connection: {
           include: {
-            mentor: true,
-            mentee: true,
+            mentor: {
+              include: {
+                profile: true
+              }
+            },
+            mentee: {
+              include: {
+                profile: true
+              }
+            },
           },
         },
       },
       orderBy: { startTime: "asc" },
     })
 
-    return NextResponse.json(sessions)
+    // Transform the data to match what the client expects
+    const transformedSessions = sessions.map(session => {
+      const isMentor = session.connection.mentorId === session.user.id;
+      return {
+        id: session.id,
+        title: session.title,
+        description: session.description,
+        startTime: session.startTime.toISOString(),
+        endTime: session.endTime.toISOString(),
+        status: session.status,
+        mentor: {
+          id: session.connection.mentor.id,
+          fullname: session.connection.mentor.name,
+          profile: {
+            profilePicture: session.connection.mentor.profile?.profilePicture || null
+          }
+        }
+      };
+    });
+
+    return NextResponse.json(transformedSessions)
   } catch (error) {
     console.error("[SESSION_ERROR]", error)
     return new NextResponse("Internal Error", { status: 500 })

@@ -104,17 +104,16 @@ export default function EditProfilePage() {
         }
       })
       
-      // Make API call to update profile
-      const response = await fetch('/api/profile/update', {
+      // Change the URL to match your API endpoint
+      const response = await fetch('/api/profile', {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`
-        },
         body: formData,
       })
       
       if (!response.ok) {
-        throw new Error('Failed to update profile')
+        const errorData = await response.json().catch(() => null);
+        console.error("Server error response:", errorData);
+        throw new Error(errorData?.error || 'Failed to update profile');
       }
       
       toast({
