@@ -114,23 +114,34 @@ export default function MenteeProfilePage() {
             <p className="mb-4">{profile?.profile?.bio || "No bio provided yet. Tell mentors about yourself by editing your profile."}</p>
             
             <h3 className="font-medium mb-2 mt-4">Learning Goals</h3>
-            {profile?.profile?.learningGoals && profile.profile.learningGoals.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {profile.profile.learningGoals.map((goal, index) => (
-                  <Badge key={index} variant="outline">{goal}</Badge>
-                ))}
+            {profile?.profile?.learningGoals && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">Learning Goals</h3>
+                {Array.isArray(profile.profile.learningGoals) ? (
+                  <ul className="list-disc pl-5 space-y-1">
+                    {profile.profile.learningGoals.map((goal, index) => (
+                      <li key={index}>{goal}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{profile.profile.learningGoals}</p>
+                )}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No learning goals set yet</p>
             )}
             
             <h3 className="font-medium mb-2 mt-4">Interests</h3>
-            {profile?.profile?.interests && profile.profile.interests.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {profile.profile.interests.map((interest, index) => (
-                  <Badge key={index} variant="outline">{interest}</Badge>
-                ))}
-              </div>
+            {profile?.profile?.interests ? (
+              Array.isArray(profile.profile.interests) ? (
+                <div className="flex flex-wrap gap-2">
+                  {profile.profile.interests.map((interest, index) => (
+                    <Badge key={index} variant="secondary">{interest}</Badge>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">{profile.profile.interests}</Badge>
+                </div>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">No interests added yet</p>
             )}

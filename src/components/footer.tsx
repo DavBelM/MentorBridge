@@ -14,16 +14,21 @@ export function Footer() {
   const isDashboard = pathname.startsWith('/dashboard')
   const [isLoaded, setIsLoaded] = useState(false)
   
-  // Using Intersection Observer to trigger animations when footer comes into view
+  // IMPORTANT: Move the hook before any conditional returns
   const [footerRef, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   })
-
+  
   useEffect(() => {
     setIsLoaded(true)
   }, [])
-
+  
+  // Now it's safe to return conditionally
+  if (isDashboard) {
+    return null
+  }
+  
   const handleAboutClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     scrollToSection('about')
@@ -92,7 +97,6 @@ export function Footer() {
 
             
                         
-            {/* Social Media Icons */}
             
           </div>
         </div>

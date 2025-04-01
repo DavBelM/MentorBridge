@@ -210,7 +210,7 @@ export default function ResourcesPage() {
           <Button 
             variant="outline" 
             className="flex items-center gap-2"
-            onClick={() => router.push('/dashboard/resources/collections/new')}
+            onClick={() => router.push('/dashboard/mentee/resources/collections/new')}
           >
             <FolderPlus className="h-4 w-4" />
             New Collection
@@ -218,7 +218,7 @@ export default function ResourcesPage() {
           
           <Button
             className="flex items-center gap-2"
-            onClick={() => router.push('/dashboard/resources/new')}
+            onClick={() => router.push('/dashboard/mentee/resources/new')}
           >
             <Plus className="h-4 w-4" />
             Add Resource
@@ -277,7 +277,7 @@ export default function ResourcesPage() {
                 variant="outline" 
                 size="sm" 
                 className="w-full"
-                onClick={() => router.push('/dashboard/resources/collections')}
+                onClick={() => router.push('/dashboard/mentee/resources/collections')}
               >
                 View All Collections
               </Button>
@@ -358,7 +358,7 @@ export default function ResourcesPage() {
                       : "No resources match your search criteria."}
                   </p>
                   
-                  <Button onClick={() => router.push('/dashboard/resources/new')}>
+                  <Button onClick={() => router.push('/dashboard/mentee/resources/new')}>
                     Add Resource
                   </Button>
                 </div>

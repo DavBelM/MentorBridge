@@ -62,8 +62,10 @@ export default function AddResourcePage() {
     async function fetchCollections() {
       setIsLoadingCollections(true);
       try {
-        const { collections } = await get<{ collections: Collection[] }>("/api/resource-collections");
-        setCollections(collections);
+        const response = await get<{ collections: Collection[] }>("/api/resource-collections");
+        if (response) {
+          setCollections(response.collections);
+        }
       } catch (error) {
         console.error("Error fetching collections:", error);
         toast({
@@ -90,7 +92,7 @@ export default function AddResourcePage() {
         description: "Resource added successfully",
       });
       
-      router.push("/dashboard/resources");
+      router.push("/dashboard/mentee/resources");
     } catch (error) {
       console.error("Error adding resource:", error);
       toast({

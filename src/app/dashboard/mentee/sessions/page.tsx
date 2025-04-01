@@ -73,8 +73,8 @@ export default function SessionsPage() {
   }
 
   // Filter sessions based on active tab
-  const upcomingSessions = sessions.filter(
-    s => s.status === "SCHEDULED" && isAfter(parseISO(s.startTime), new Date())
+  const upcomingSessions: Session[] = sessions.filter(
+    (s: Session) => s.status === "SCHEDULED" && isAfter(parseISO(s.startTime), new Date())
   )
   
   const pastSessions = sessions.filter(

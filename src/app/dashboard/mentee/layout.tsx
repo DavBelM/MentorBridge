@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
-
+import { SWRConfig } from "swr"
 export default function MenteeDashboardLayout({
   children,
 }: {
@@ -41,11 +41,11 @@ export default function MenteeDashboardLayout({
   const { toast } = useToast()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [notifications, setNotifications] = useState([
+  /* const [notifications, setNotifications] = useState([
     { id: 1, message: "New message from your mentor", read: false },
     { id: 2, message: "Session reminder for tomorrow", read: false },
     { id: 3, message: "New resource available", read: false },
-  ])
+  ]) */
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   useEffect(() => {
@@ -119,14 +119,14 @@ export default function MenteeDashboardLayout({
       name: "Notifications", 
       href: "/dashboard/mentee/notifications", 
       icon: Bell,
-      notification: notifications.filter(n => !n.read).length > 0 ? notifications.filter(n => !n.read).length : undefined
-    },
+      notification: unreadMessageCount > 0 ? unreadMessageCount : undefined},
     { name: "Resources", href: "/dashboard/mentee/resources", icon: BookOpen },
     { name: "Mental Health", href: "/dashboard/mentee/mental-health", icon: Heart },
     { name: "Settings", href: "/dashboard/mentee/settings", icon: Settings },
   ]
 
   return (
+    <SWRConfig>
     <div className="min-h-screen bg-background">
       {/* Mobile view */}
       <div className="md:hidden">
@@ -263,5 +263,6 @@ export default function MenteeDashboardLayout({
         </div>
       </div>
     </div>
+    </SWRConfig>
   )
 }

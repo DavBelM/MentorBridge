@@ -101,19 +101,27 @@ export async function GET(request: NextRequest) {
 
 // PUT - Update profile
 export async function PUT(request: Request) {
+  console.log("PUT /api/profile - Request received");
+  
   try {
     // Get user session
     const session = await getServerSession(authOptions);
+    console.log("Session:", session ? "Available" : "Not available");
     
     if (!session?.user) {
+      console.log("Unauthorized - No user in session");
       return new NextResponse("Unauthorized", { status: 401 });
     }
+    
+    console.log("User ID from session:", session.user.id);
     
     // Get user ID from session
     const userId = session.user.id;
     
     // Parse the multipart form data including any files
     const { files, fields } = await parseFormData(request);
+    console.log("Form fields received:", fields);
+    console.log("Files received:", Object.keys(files));
     
     // Check if profile exists
     const existingProfile = await prisma.profile.findUnique({
@@ -171,12 +179,18 @@ export async function PUT(request: Request) {
       });
     }
     
+    // Log profile data being saved
+    console.log("Profile data to save:", data);
+    
+    // Return proper response
+    console.log("Profile updated successfully");
     return NextResponse.json(profile);
   } catch (error) {
     console.error("Error updating profile:", error);
     // Return proper JSON error
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new NextResponse(
-      JSON.stringify({ error: "Internal Server Error" }), 
+      JSON.stringify({ error: "Internal Server Error", details: errorMessage }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

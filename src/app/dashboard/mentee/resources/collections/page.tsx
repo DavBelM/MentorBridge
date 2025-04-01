@@ -49,8 +49,10 @@ export default function CollectionsPage() {
     async function fetchCollections() {
       setIsLoading(true)
       try {
-        const { collections } = await get<{ collections: Collection[] }>('/api/resource-collections')
-        setCollections(collections)
+        const response = await get<{ collections: Collection[] } | null>('/api/resource-collections')
+        if (response && response.collections) {
+          setCollections(response.collections)
+        }
       } catch (error) {
         console.error('Error fetching collections:', error)
         toast({
@@ -97,14 +99,14 @@ export default function CollectionsPage() {
       <div className="flex items-center justify-between mb-6">
         <Button
           variant="ghost"
-          onClick={() => router.push('/dashboard/resources')}
+          onClick={() => router.push('/dashboard/mentee/resources')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Resources
         </Button>
         
         <Button
-          onClick={() => router.push('/dashboard/resources/collections/new')}
+          onClick={() => router.push('/dashboard/mentee/resources/collections/new')}
         >
           <FolderPlus className="mr-2 h-4 w-4" />
           New Collection
@@ -193,7 +195,7 @@ export default function CollectionsPage() {
           <p className="text-muted-foreground mb-6">
             Create collections to organize your resources
           </p>
-          <Button onClick={() => router.push('/dashboard/resources/collections/new')}>
+          <Button onClick={() => router.push('/dashboard/mentee/resources/collections/new')}>
             <FolderPlus className="mr-2 h-4 w-4" />
             Create Collection
           </Button>
