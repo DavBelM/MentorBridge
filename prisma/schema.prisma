@@ -8,56 +8,56 @@ datasource db {
 }
 
 model User {
-  id                  String             @id @default(cuid())
-  email               String             @unique
-  name                String?
-  fullname            String?
-  username            String?
-  password            String?
-  image               String?
-  role                String             @default("MENTEE")
-  isActive            Boolean            @default(true)
-  isApproved          Boolean            @default(false)
-  submittedForApproval Boolean           @default(false)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  mentorConnections   Connection[]       @relation("MentorConnections")
-  menteeConnections   Connection[]       @relation("MenteeConnections")
-  sentMessages        Message[]          @relation("SentMessages")
-  receivedMessages    Message[]          @relation("ReceivedMessages")
-  notifications       Notification[]
-  profile             Profile?
-  createdResources    Resource[]         @relation("CreatedResources")
-  createdCollections  ResourceCollection[] @relation("CreatedCollections")
-  progress            Progress[]
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String?
+  fullname             String?
+  username             String?
+  password             String?
+  image                String?
+  role                 String               @default("MENTEE")
+  isActive             Boolean              @default(true)
+  isApproved           Boolean              @default(false)
+  submittedForApproval Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  mentorConnections    Connection[]         @relation("MentorConnections")
+  menteeConnections    Connection[]         @relation("MenteeConnections")
+  sentMessages         Message[]            @relation("SentMessages")
+  receivedMessages     Message[]            @relation("ReceivedMessages")
+  notifications        Notification[]
+  profile              Profile?
+  createdResources     Resource[]           @relation("CreatedResources")
+  createdCollections   ResourceCollection[] @relation("CreatedCollections")
+  progress             Progress[]
 }
 
 model Profile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  bio         String?
-  skills      String[]
-  education   String[]
-  availability String?
-  location    String?
-  linkedin    String?
-  twitter     String?
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  bio            String?
+  skills         String[]
+  education      String[]
+  availability   String?
+  location       String?
+  linkedin       String?
+  twitter        String?
   profilePicture String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 model Connection {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   mentorId  String
   menteeId  String
-  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  status    String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
   message   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  mentor    User     @relation("MentorConnections", fields: [mentorId], references: [id])
-  mentee    User     @relation("MenteeConnections", fields: [menteeId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  mentor    User      @relation("MentorConnections", fields: [mentorId], references: [id])
+  mentee    User      @relation("MenteeConnections", fields: [menteeId], references: [id])
   messages  Message[]
   sessions  Session[]
 
@@ -95,23 +95,25 @@ model Session {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // CONNECTION_REQUEST, MESSAGE, SESSION, etc.
+  title     String // Add this field
+  type      String // CONNECTION_REQUEST, MESSAGE, SESSION, etc.
   message   String
+  entityId  String? // Add this field to store related entity ID (message ID, session ID, etc.)
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
 
 model Resource {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   title       String
   description String?
   url         String
-  type        String   // ARTICLE, VIDEO, DOCUMENT, etc.
+  type        String // ARTICLE, VIDEO, DOCUMENT, etc.
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   User     @relation("CreatedResources", fields: [createdById], references: [id])
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  createdBy   User                 @relation("CreatedResources", fields: [createdById], references: [id])
   collections ResourceCollection[]
 }
 
@@ -129,7 +131,7 @@ model ResourceCollection {
 model Progress {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // MENTAL_HEALTH, LEARNING, etc.
+  type      String // MENTAL_HEALTH, LEARNING, etc.
   score     Int
   notes     String?
   createdAt DateTime @default(now())
@@ -144,8 +146,8 @@ model PlatformSettings {
   maxSessionsPerWeek    Int      @default(5)
   sessionDuration       Int      @default(60)
   maintenanceMode       Boolean  @default(false)
-  siteName             String   @default("MentorBridge")
-  contactEmail         String   @default("support@mentorbridge.com")
-  updatedAt            DateTime @updatedAt
-  createdAt            DateTime @default(now())
+  siteName              String   @default("MentorBridge")
+  contactEmail          String   @default("support@mentorbridge.com")
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
 }

@@ -18,14 +18,15 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
-  Search
+  Search,
+  Bell
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 
 export default function MenteeDashboardLayout({
   children,
@@ -101,6 +102,12 @@ export default function MenteeDashboardLayout({
       icon: MessageSquare,
       notification: unreadMessageCount > 0 ? unreadMessageCount : undefined
     },
+    { 
+      name: "Notifications", 
+      href: "/dashboard/mentee/notifications", 
+      icon: Bell,
+      notification: notifications.filter(n => !n.read).length > 0 ? notifications.filter(n => !n.read).length : undefined
+    },
     { name: "Resources", href: "/dashboard/mentee/resources", icon: BookOpen },
     { name: "Mental Health", href: "/dashboard/mentee/mental-health", icon: Heart },
     { name: "Settings", href: "/dashboard/mentee/settings", icon: Settings },
@@ -123,17 +130,7 @@ export default function MenteeDashboardLayout({
           </button>
           <h1 className="text-xl font-bold">Mentee Dashboard</h1>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative"
-              onClick={handleNotificationClick}
-            >
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                {notifications.filter(n => !n.read).length}
-              </Badge>
-            </Button>
+            <NotificationsDropdown />
           </div>
         </div>
         {isMobileMenuOpen && (
@@ -191,17 +188,7 @@ export default function MenteeDashboardLayout({
         <div className="w-64 flex-shrink-0 border-r bg-background">
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <h1 className="text-xl font-bold">Mentee Dashboard</h1>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative"
-              onClick={handleNotificationClick}
-            >
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                {notifications.filter(n => !n.read).length}
-              </Badge>
-            </Button>
+            <NotificationsDropdown />
           </div>
           <div className="p-4 border-b">
             <form onSubmit={handleSearch} className="relative">

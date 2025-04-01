@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-config"
 import { prisma } from "@/lib/prisma"
+import { format } from "date-fns"
 
 export async function POST(req: Request) {
   try {
@@ -78,8 +79,10 @@ export async function POST(req: Request) {
     await prisma.notification.create({
       data: {
         userId: recipientId,
+        title: "New Session Scheduled",
         type: "NEW_SESSION",
-        message: `New session scheduled: ${title}`,
+        message: `New session scheduled: ${title} on ${format(new Date(startTime), "MMM d, yyyy 'at' h:mm a")}`,
+        entityId: newSession.id, // Include the session ID
         read: false,
       },
     })
@@ -189,8 +192,10 @@ export async function PUT(req: Request) {
     await prisma.notification.create({
       data: {
         userId: recipientId,
+        title: "Session Update",
         type: "SESSION_UPDATE",
-        message: `Session "${existingSession.title}" has been ${status.toLowerCase()}`,
+        message: `Session with ${session.user.name} has been updated.`,
+        entityId: updatedSession.id,
         read: false,
       },
     })
@@ -200,4 +205,4 @@ export async function PUT(req: Request) {
     console.error("[SESSION_ERROR]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
-} 
+}

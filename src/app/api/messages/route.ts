@@ -45,10 +45,16 @@ export async function POST(req: Request) {
     // Create notification for recipient
     await prisma.notification.create({
       data: {
-        userId: recipientId,
+        title: "New Message",
+        message: `New message from ${session.user.fullname || 'your connection'}`,
         type: "NEW_MESSAGE",
-        message: `New message from ${session.user.fullname}`,
+        entityId: connectionId, // Use connectionId as entityId for easier navigation
         read: false,
+        user: {
+          connect: {
+            id: recipientId
+          }
+        }
       },
     })
 
@@ -118,4 +124,4 @@ export async function GET(req: Request) {
     console.error("[MESSAGING_ERROR]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
-} 
+}

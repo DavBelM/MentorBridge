@@ -17,6 +17,7 @@ export async function GET() {
       orderBy: {
         createdAt: "desc",
       },
+      take: 15, // Limit to most recent 15
     })
 
     return NextResponse.json(notifications)
@@ -50,4 +51,20 @@ export async function PUT(request: Request) {
     console.error("Failed to update notification:", error)
     return new NextResponse("Internal Server Error", { status: 500 })
   }
-} 
+}
+
+// Helper function to generate links
+function getNotificationLink(type: string, entityId?: string): string | undefined {
+  if (!entityId) return undefined;
+  
+  switch (type) {
+    case 'message':
+      return `/dashboard/mentee/messages/${entityId}`;
+    case 'session':
+      return `/dashboard/mentee/sessions/${entityId}`;
+    case 'request':
+      return `/dashboard/mentee/my-mentors`;
+    default:
+      return undefined;
+  }
+}
