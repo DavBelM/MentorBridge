@@ -21,7 +21,7 @@ type Notification = {
   createdAt: string
 }
 
-export function NotificationsDropdown() {
+export function NotificationsDropdown({ userRole = "MENTEE" }: { userRole?: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,33 +75,48 @@ export function NotificationsDropdown() {
   }
 
   function handleNotificationClick(notification: Notification) {
+    // Add userRole to notification object
+    const notificationWithRole = {
+      ...notification,
+      userRole
+    };
+    
     // Mark as read
     if (!notification.read) {
       markAsRead(notification.id)
     }
     
     // Navigate if there's a link
-    const link = getNotificationLink(notification)
+    const link = getNotificationLink(notificationWithRole)
     if (link) {
       setOpen(false)
       router.push(link)
     }
   }
 
-  function getNotificationLink(notification: Notification): string | undefined {
-    // Handle actual database types
+  // Update the getNotificationLink function to handle both mentee and mentor roles
+  function getNotificationLink(notification: Notification & { userRole?: string }): string | undefined {
     if (!notification.entityId) return undefined;
     
+    // Determine user role - this could come from a prop or context
+    const userRole = notification.userRole || "MENTEE"; // Default to mentee for backward compatibility
+    const baseRoute = userRole === "MENTOR" ? "/dashboard/mentor" : "/dashboard/mentee";
+    
     if (notification.type.includes("MESSAGE")) {
-      return `/dashboard/mentee/messages?connectionId=${notification.entityId}`
+      return `${baseRoute}/messages?connectionId=${notification.entityId}`;
     }
+    
     if (notification.type.includes("SESSION")) {
-      return `/dashboard/mentee/sessions`
+      return `${baseRoute}/sessions`;
     }
+    
     if (notification.type.includes("CONNECTION") || notification.type.includes("REQUEST")) {
-      return '/dashboard/mentee/my-mentors'
+      return userRole === "MENTOR" 
+        ? `${baseRoute}/mentees` 
+        : `${baseRoute}/my-mentors`;
     }
-    return undefined
+    
+    return undefined;
   }
 
   async function markAllAsRead() {

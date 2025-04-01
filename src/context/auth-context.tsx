@@ -1,7 +1,5 @@
 "use client"
 
-"use client"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -73,24 +71,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (status === "loading") {
-      setIsLoading(true)
-    } else if (status === "authenticated" && session?.user) {
+    if (session?.user) {
+      // Create a consistent user object from session
       setUser({
-        id: session.user.id as string,
-        email: session.user.email as string,
-        fullname: session.user.fullname as string,
-        role: session.user.role as string,
-        isApproved: session.user.isApproved as boolean,
-        profile: session.user.profile as Profile | null
-      })
-      setIsLoading(false)
-    } else if (status === "unauthenticated") {
-      setUser(null)
-      setIsLoading(false)
-      router.push("/login")
+        id: session.user.id,
+        email: session.user.email || '',
+        fullname: session.user.name || '', // Use name from session
+        role: session.user.role,
+        isApproved: session.user.isApproved,
+        profile: null // You might fetch this separately
+      });
+      setIsLoading(false);
+    } else if (status !== "loading") {
+      setIsLoading(false);
+      setUser(null);
     }
-  }, [status, session, router])
+  }, [status, session, router]);
 
   // Login function with optimizations
   const login = async (email: string, password: string) => {

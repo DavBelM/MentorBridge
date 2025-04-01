@@ -7,6 +7,7 @@ import { PenSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface ProfileData {
   id: number
@@ -81,7 +82,7 @@ export default function MentorProfilePage() {
               />
             ) : (
               <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-2xl">{profile?.fullname.charAt(0)}</span>
+                <AvatarFallback>{profile?.fullname ? profile.fullname.charAt(0) : '?'}</AvatarFallback>
               </div>
             )}
             <h2 className="mt-4 text-xl font-semibold">{profile?.fullname}</h2>

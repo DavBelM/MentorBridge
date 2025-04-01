@@ -169,7 +169,9 @@ export default function MentorDashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Welcome back, {user?.fullname}</h1>
+        <h1 className="text-3xl font-bold">
+          Welcome back, {user?.name || session?.user?.name || "Mentor"}
+        </h1>
         <p className="text-muted-foreground">Here's an overview of your mentor activities.</p>
       </div>
       
@@ -322,8 +324,8 @@ export default function MentorDashboardPage() {
                     <p className="font-medium">{session.title}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={session.menteeName.charAt(0)} />
-                        <AvatarFallback>{session.menteeName.charAt(0)}</AvatarFallback>
+                        <AvatarImage src="" alt={session.menteeName} />
+                        <AvatarFallback>{session.menteeName ? session.menteeName.charAt(0) : '?'}</AvatarFallback>
                       </Avatar>
                       <span className="text-sm">{session.menteeName}</span>
                     </div>

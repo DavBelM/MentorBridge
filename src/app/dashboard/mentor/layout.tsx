@@ -1,7 +1,5 @@
 "use client"
 
-"use client"
-
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -28,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 
 export default function MentorDashboardLayout({
   children,
@@ -105,18 +104,8 @@ export default function MentorDashboardLayout({
             )}
           </button>
           <h1 className="text-xl font-bold">Mentor Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative"
-              onClick={handleNotificationClick}
-            >
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                {notifications.filter(n => !n.read).length}
-              </Badge>
-            </Button>
+          <div className="flex items-center space-x-2">
+            <NotificationsDropdown userRole="MENTOR" />
           </div>
         </div>
         {isMobileMenuOpen && (
@@ -215,6 +204,14 @@ export default function MentorDashboardLayout({
 
         {/* Main content */}
         <div className="flex-1 overflow-auto">
+          <div className="border-b">
+            <div className="flex h-16 items-center justify-between px-4">
+              <div>{/* Left side elements */}</div>
+              <div className="flex items-center gap-4">
+                <NotificationsDropdown userRole="MENTOR" />
+              </div>
+            </div>
+          </div>
           <main className="p-6">
             {children}
           </main>

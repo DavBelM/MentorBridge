@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search } from "lucide-react"
+import { Search, Send, MessageSquare } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 
 type Thread = {
   id: number
@@ -53,407 +54,395 @@ export default function MentorMessagesPage() {
   const [activeThread, setActiveThread] = useState<number | null>(null)
   const [selectedContact, setSelectedContact] = useState<{id: number, name: string, avatar: string | null} | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [socket, setSocket] = useState<Socket | null>(null)
-  
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // Initialize socket connection
-  useEffect(() => {
-    if (!session?.user?.id) return
-
-    const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin, {
-      query: {
-        userId: session.user.id
-      }
-    })
-
-    setSocket(newSocket)
-
-    return () => {
-      newSocket.disconnect()
-    }
-  }, [session])
   
-  // Setup message listeners
+  // Get active thread from URL
   useEffect(() => {
-    if (!socket || !activeThread || !session?.user?.id) return
-
-    const handleNewMessage = (message: Message) => {
-      // Only add message if it belongs to active thread
-      if (message.threadId === activeThread) {
-        setMessages(prev => [...prev, message])
-      }
-      
-      // Update threads list to reflect the new message
-      setThreads(prev => prev.map(thread => {
-        if (thread.id === message.threadId) {
-          return {
-            ...thread,
-            lastMessage: {
-              id: message.id,
-              content: message.content,
-              senderId: message.senderId,
-              createdAt: message.createdAt
-            },
-            unreadCount: thread.id !== activeThread && message.senderId !== Number(session.user?.id) 
-              ? thread.unreadCount + 1 
-              : thread.unreadCount,
-            updatedAt: message.createdAt
-          }
-        }
-        return thread
-      }))
+    const threadIdParam = searchParams.get("threadId")
+    if (threadIdParam) {
+      setActiveThread(parseInt(threadIdParam))
     }
-
-    socket.on('newMessage', handleNewMessage)
-    
-    // Join thread room
-    socket.emit('joinThread', activeThread)
-
-    return () => {
-      socket.off('newMessage', handleNewMessage)
-      socket.emit('leaveThread', activeThread)
-    }
-  }, [socket, activeThread, threads, session])
-
+  }, [searchParams])
+  
   // Fetch threads
   useEffect(() => {
     async function fetchThreads() {
-      if (!session?.user?.id) return
-      
       try {
         setIsLoading(true)
-        const response = await fetch('/api/messages/threads')
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch message threads')
-        }
+        const response = await fetch("/api/messages/threads")
+        if (!response.ok) throw new Error("Failed to fetch threads")
         
         const data = await response.json()
-        setThreads(data)
+        
+        // Ensure threads is always an array
+        const threadsArray = Array.isArray(data) ? data : [];
+        setThreads(threadsArray)
+        
+        // If there's a thread ID in the URL, set it as active
+        const threadIdParam = searchParams.get("threadId")
+        if (threadIdParam) {
+          const threadId = parseInt(threadIdParam)
+          setActiveThread(threadId)
+          
+          // Find the thread to get contact info
+          const thread = threadsArray.find((t: Thread) => t.id === threadId)
+          if (thread) {
+            setSelectedContact({
+              id: thread.contact.id,
+              name: thread.contact.fullname,
+              avatar: thread.contact.profile?.profilePicture || null
+            })
+          }
+        }
       } catch (error) {
-        console.error('Error fetching message threads:', error)
+        console.error("Error fetching threads:", error)
         toast({
           title: "Error",
-          description: "Failed to load messages",
+          description: "Failed to load message threads",
           variant: "destructive",
         })
+        // Set to empty array on error
+        setThreads([])
       } finally {
         setIsLoading(false)
       }
     }
     
     fetchThreads()
-  }, [session, toast])
+  }, [searchParams, toast])
   
-  // Check for menteeId in query params to open specific thread
+  // Fetch messages for active thread
   useEffect(() => {
-    const menteeId = searchParams.get('menteeId')
-    if (menteeId && !activeThread) {
-      createOrFindThread(Number(menteeId))
-    }
-  }, [searchParams])
-  
-  // Fetch messages when active thread changes
-  useEffect(() => {
+    if (!activeThread) return
+    
     async function fetchMessages() {
-      if (!activeThread) return
-      
       try {
         const response = await fetch(`/api/messages/threads/${activeThread}`)
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch messages')
-        }
+        if (!response.ok) throw new Error("Failed to fetch messages")
         
         const data = await response.json()
-        setMessages(data)
+        setMessages(Array.isArray(data) ? data : [])
         
         // Mark thread as read
-        if (socket) {
-          socket.emit('markThreadAsRead', activeThread)
-          
-          // Update local threads data
-          setThreads(prev => prev.map(thread => 
+        markThreadAsRead(activeThread)
+        
+        // Update thread unread count in the thread list
+        setThreads(prevThreads => 
+          prevThreads.map(thread => 
             thread.id === activeThread 
-              ? {...thread, unreadCount: 0} 
+              ? { ...thread, unreadCount: 0 } 
               : thread
-          ))
-        }
+          )
+        )
       } catch (error) {
-        console.error('Error fetching messages:', error)
+        console.error("Error fetching messages:", error)
         toast({
           title: "Error",
-          description: "Failed to load conversation",
+          description: "Failed to load messages",
           variant: "destructive",
         })
+        setMessages([])
       }
     }
     
     fetchMessages()
-  }, [activeThread, socket])
+  }, [activeThread, toast])
   
-  // Scroll to bottom when messages change
+  // Auto-scroll to bottom when messages update
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
   
-  // Create or find thread when user clicks on a mentee
-  const createOrFindThread = async (menteeId: number) => {
+  // Filter threads based on search
+  const filteredThreads = Array.isArray(threads) 
+    ? threads.filter(thread => 
+        thread.contact.fullname.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+  
+  // Mark thread as read
+  async function markThreadAsRead(threadId: number) {
     try {
-      const response = await fetch('/api/messages/threads', {
-        method: 'POST',
+      await fetch(`/api/messages/threads/${threadId}/read`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ menteeId })
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to create conversation thread')
-      }
-      
-      const data = await response.json()
-      
-      // Check if thread already exists in our list
-      const threadExists = threads.find(t => t.id === data.id)
-      
-      if (!threadExists) {
-        setThreads(prev => [data, ...prev])
-      }
-      
-      setActiveThread(data.id)
-      setSelectedContact({
-        id: data.contact.id,
-        name: data.contact.fullname,
-        avatar: data.contact.profile?.profilePicture || null
       })
     } catch (error) {
-      console.error('Error creating thread:', error)
-      toast({
-        title: "Error",
-        description: "Failed to start conversation",
-        variant: "destructive",
-      })
+      console.error("Error marking thread as read:", error)
     }
   }
   
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !activeThread || !socket) return
+  // Select a thread
+  function selectThread(thread: Thread) {
+    setActiveThread(thread.id)
+    setSelectedContact({
+      id: thread.contact.id,
+      name: thread.contact.fullname,
+      avatar: thread.contact.profile?.profilePicture || null
+    })
     
+    // Update URL to include thread ID
+    router.push(`/dashboard/mentor/messages?threadId=${thread.id}`, { scroll: false })
+  }
+  
+  // Send a message
+  async function sendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newMessage.trim() || !activeThread) return
+    
+    // Optimistically add message to the UI
     const tempId = Date.now()
-    const pendingMessage = {
+    const tempMessage: Message = {
       id: tempId,
       content: newMessage,
-      senderId: Number(session?.user?.id),
+      senderId: session?.user?.id as number,
       threadId: activeThread,
       createdAt: new Date().toISOString(),
       pending: true
     }
     
-    // Add to UI immediately
-    setMessages(prev => [...prev, pendingMessage])
+    setMessages(prev => [...prev, tempMessage])
     setNewMessage("")
     
     try {
-      // Send via socket
-      socket.emit('sendMessage', {
-        content: newMessage,
-        threadId: activeThread
+      const response = await fetch(`/api/messages/threads/${activeThread}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: newMessage }),
       })
-    } catch (error) {
-      console.error('Error sending message:', error)
       
-      // Show error and mark message as failed
+      if (!response.ok) throw new Error("Failed to send message")
+      
+      const data = await response.json()
+      
+      // Replace the temp message with the real one
+      setMessages(messages => 
+        messages.map(msg => 
+          msg.id === tempId ? data : msg
+        )
+      )
+      
+      // Update thread in the list
+      setThreads(threads => 
+        threads.map(thread => 
+          thread.id === activeThread 
+            ? { 
+                ...thread, 
+                lastMessage: {
+                  id: data.id,
+                  content: data.content,
+                  senderId: data.senderId,
+                  createdAt: data.createdAt
+                }, 
+                updatedAt: data.createdAt,
+                unreadCount: 0
+              } 
+            : thread
+        )
+      )
+    } catch (error) {
+      console.error("Error sending message:", error)
       toast({
         title: "Error",
         description: "Failed to send message",
         variant: "destructive",
       })
       
-      setMessages(prev => prev.map(message => 
-        message.id === tempId
-          ? { ...message, content: message.content + ' (Failed to send)' }
-          : message
-      ))
+      // Remove the pending message
+      setMessages(messages => messages.filter(msg => msg.id !== tempId))
     }
   }
   
-  const handleThreadSelect = (threadId: number) => {
-    const thread = threads.find(t => t.id === threadId)
-    if (!thread) return
-    
-    setActiveThread(threadId)
-    setSelectedContact({
-      id: thread.contact.id,
-      name: thread.contact.fullname,
-      avatar: thread.contact.profile?.profilePicture || null
-    })
+  // Format time for display
+  function formatMessageTime(dateString: string) {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true })
   }
   
-  // Filter threads based on search query
-  const filteredThreads = threads.filter(thread => 
-    thread.contact.fullname.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
+  // Get initials for avatar fallback
+  function getInitials(name: string) {
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+  }
+  
+  // Return component JSX here
   return (
-    <div className="container mx-auto py-6">
+    <div className="container py-6">
       <h1 className="text-2xl font-bold mb-6">Messages</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-        {/* Threads List */}
-        <div className="md:col-span-1 border rounded-lg overflow-hidden flex flex-col h-full">
-          <div className="p-4 border-b">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+        {/* Thread list */}
+        <Card className="col-span-1 md:col-span-1">
+          <CardHeader className="px-4 py-3">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search mentees..." 
-                className="pl-8"
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search mentees..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
               />
             </div>
-          </div>
-          
-          <div className="overflow-y-auto flex-grow">
+          </CardHeader>
+          <CardContent className="p-0">
             {isLoading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3, 4, 5].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
-                      <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+              // Loading state for thread list
+              <div className="space-y-2 p-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2">
+                    <div className="h-10 w-10 rounded-full bg-muted" />
+                    <div className="space-y-1 flex-1">
+                      <div className="h-4 w-24 bg-muted rounded" />
+                      <div className="h-3 w-32 bg-muted rounded" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredThreads.length > 0 ? (
-              <div>
+              <div className="h-[calc(100vh-280px)] overflow-y-auto">
                 {filteredThreads.map((thread) => (
-                  <div 
+                  <div
                     key={thread.id}
-                    className={`flex items-center p-4 cursor-pointer hover:bg-muted/50 ${
-                      activeThread === thread.id ? 'bg-muted' : ''
+                    className={`flex items-start p-3 gap-3 cursor-pointer hover:bg-muted transition-colors ${
+                      thread.id === activeThread ? "bg-muted" : ""
                     }`}
-                    onClick={() => handleThreadSelect(thread.id)}
+                    onClick={() => selectThread(thread)}
                   >
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={thread.contact.profile?.profilePicture || ""} />
-                      <AvatarFallback>{thread.contact.fullname.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={thread.contact.profile?.profilePicture || undefined} />
+                      <AvatarFallback>
+                        {getInitials(thread.contact.fullname)}
+                      </AvatarFallback>
                     </Avatar>
-                    <div className="ml-4 flex-1 overflow-hidden">
+                    <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center">
-                        <h3 className="font-medium text-sm">{thread.contact.fullname}</h3>
+                        <p className="font-medium truncate">{thread.contact.fullname}</p>
                         {thread.lastMessage && (
                           <span className="text-xs text-muted-foreground">
-                            {new Date(thread.lastMessage.createdAt).toLocaleDateString()}
+                            {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: false })}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                          {thread.lastMessage ? thread.lastMessage.content : 'Start a conversation'}
-                        </p>
-                        {thread.unreadCount > 0 && (
-                          <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                            {thread.unreadCount}
-                          </span>
-                        )}
-                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {thread.lastMessage ? thread.lastMessage.content : "No messages yet"}
+                      </p>
                     </div>
+                    {thread.unreadCount > 0 && (
+                      <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5">
+                        {thread.unreadCount}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">No conversation threads found</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Start a conversation with a mentee from your connections
+              <div className="p-6 text-center">
+                <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-2">No conversations yet</p>
+                <p className="text-xs text-muted-foreground">
+                  When mentees connect with you, your conversations will appear here
                 </p>
               </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        {/* Messages */}
-        <div className="md:col-span-2 border rounded-lg flex flex-col h-full">
+        {/* Message area */}
+        <Card className="col-span-1 md:col-span-2 flex flex-col">
           {activeThread && selectedContact ? (
             <>
-              <div className="p-4 border-b flex items-center">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={selectedContact.avatar || ""} />
-                  <AvatarFallback>{selectedContact.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <h2 className="ml-2 font-medium">{selectedContact.name}</h2>
-              </div>
+              {/* Message content here */}
+              <CardHeader className="px-4 py-3 border-b">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={selectedContact.avatar || undefined} />
+                    <AvatarFallback>{getInitials(selectedContact.name)}</AvatarFallback>
+                  </Avatar>
+                  <p className="font-medium">{selectedContact.name}</p>
+                </div>
+              </CardHeader>
               
-              <div className="flex-grow overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => {
-                  const isMine = message.senderId === Number(session?.user?.id)
-                  
-                  return (
-                    <div 
-                      key={message.id} 
-                      className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div 
-                        className={`max-w-[70%] px-4 py-2 rounded-lg ${
-                          isMine 
-                            ? 'bg-primary text-primary-foreground ml-12' 
-                            : 'bg-muted mr-12'
-                        } ${message.pending ? 'opacity-70' : ''}`}
+              <CardContent className="flex-1 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                  {messages.map((message) => {
+                    const isSentByMe = message.senderId === session?.user?.id
+                    
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${isSentByMe ? "justify-end" : "justify-start"}`}
                       >
-                        <p className="text-sm">{message.content}</p>
-                        <p className="text-xs text-right mt-1 opacity-70">
-                          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <div
+                          className={`max-w-[80%] rounded-lg p-3 ${
+                            isSentByMe
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          } ${message.pending ? "opacity-70" : ""}`}
+                        >
+                          <p>{message.content}</p>
+                          <p className={`text-xs mt-1 ${
+                            isSentByMe ? "text-primary-foreground/70" : "text-muted-foreground"
+                          }`}>
+                            {formatMessageTime(message.createdAt)}
+                            {message.pending && " (Sending...)"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-                <div ref={messagesEndRef} />
-              </div>
+                    )
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              </CardContent>
               
-              <div className="p-4 border-t">
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }}
-                  className="flex gap-2"
-                >
-                  <Input 
-                    placeholder="Type a message..." 
+              <div className="p-3 border-t">
+                <form onSubmit={sendMessage} className="flex gap-2">
+                  <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={`Message ${selectedContact.name}...`}
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        if (newMessage.trim()) {
+                          sendMessage(e)
+                        }
+                      }
+                    }}
                   />
-                  <Button type="submit" disabled={!newMessage.trim()}>Send</Button>
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!newMessage.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </form>
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <Card className="w-[90%] max-w-md">
-                <CardHeader>
-                  <h3 className="text-lg font-medium">Your Messages</h3>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-center mb-4">
-                    Select a conversation to start messaging or initiate a new conversation from your mentees list.
-                  </p>
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => router.push('/dashboard/mentor/mentees')}
-                  >
-                    View My Mentees
-                  </Button>
-                </CardContent>
-              </Card>
+            <div className="h-full flex flex-col items-center justify-center p-6">
+              <div className="max-w-sm text-center">
+                <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium text-lg mb-2">Select a conversation</h3>
+                <p className="text-muted-foreground mb-6">
+                  Choose a mentee from the list to view your conversation history
+                </p>
+                <Button variant="outline" onClick={() => router.push("/dashboard/mentor/mentees")}>
+                  View My Mentees
+                </Button>
+              </div>
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   )

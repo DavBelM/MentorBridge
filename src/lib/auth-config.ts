@@ -44,7 +44,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id.toString(),
           email: user.email,
-          fullname: user.fullname || "", // Ensure fullname is never null
+          name: user.name || "", // Use name instead of fullname
           role: user.role,
           isApproved: user.isApproved
         }
@@ -57,9 +57,9 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.email = user.email
+        token.name = user.name || ''
         token.role = user.role
         token.isApproved = user.isApproved
-        token.name = user.name || ''
       }
       console.log("JWT callback generating token:", token)
       return token
@@ -70,7 +70,9 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id
         session.user.role = token.role
         session.user.isApproved = token.isApproved
-        session.user.name = token.name || token.name
+        session.user.name = token.name || ''
+        // Add fullname alias to maintain compatibility with your components
+        session.user.fullname = token.name || ''
       }
       console.log("Session callback generating session:", session)
       return session
