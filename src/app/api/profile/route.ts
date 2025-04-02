@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import fs from 'fs';
 import path from 'path';
 import { promises as fsPromises } from 'fs';
+import { put } from '@vercel/blob';
 const { writeFile } = fsPromises;
 
 // Helper function to parse form data with files
@@ -202,27 +203,7 @@ export async function PUT(request: Request) {
 
 // Helper function for file upload
 async function uploadFile(file: File) {
-  try {
-    // For development, store in public directory
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    
-    // Create unique filename
-    const uniqueFilename = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-    const filePath = path.join(uploadsDir, uniqueFilename);
-    
-    // Convert file to buffer and save
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
-    
-    // Return the URL that can be accessed publicly
-    return `/uploads/${uniqueFilename}`;
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    throw new Error("Failed to upload profile picture");
-  }
+  const filename = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+  const blob = await put(filename, file, { access: 'public' });
+  return blob.url;
 }

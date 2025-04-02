@@ -296,8 +296,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
   <p>Developed by Bela Mitali</p>
   <p>
-    <a href="https://twitter.com/yourhandle">Twitter</a> •
-    <a href="https://linkedin.com/in/yourprofile">LinkedIn</a> •
+    <a href="https://linkedin.com/in/mitali-bela">LinkedIn</a> •
     <a href="https://yourwebsite.com">Website</a>
   </p>
 </div>
