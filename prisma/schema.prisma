@@ -30,6 +30,8 @@ model User {
   createdResources     Resource[]           @relation("CreatedResources")
   createdCollections   ResourceCollection[] @relation("CreatedCollections")
   progress             Progress[]
+  mentorSessions       Session[]            @relation("MentorSessions")
+  menteeSessions       Session[]            @relation("MenteeSessions")
 }
 
 model Profile {
@@ -43,10 +45,8 @@ model Profile {
   profilePicture String?
   linkedin       String?
   twitter        String?
-
-  // Add these missing fields
-  interests     String?
-  learningGoals String?
+  interests      String?
+  learningGoals  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -84,26 +84,33 @@ model Message {
 }
 
 model Session {
-  id           String     @id @default(cuid())
-  title        String
-  description  String?
-  startTime    DateTime
-  endTime      DateTime
-  status       String     @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
-  notes        String?
-  connectionId String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  connection   Connection @relation(fields: [connectionId], references: [id])
+  id                 String     @id @default(cuid())
+  title              String
+  description        String?
+  startTime          DateTime
+  endTime            DateTime
+  status             String     @default("PENDING") // PENDING, SCHEDULED, COMPLETED, CANCELLED, DECLINED
+  location           String? 
+  notes              String?
+  feedback           String?
+  cancellationReason String?
+  connectionId       String
+  mentorId           String 
+  menteeId           String 
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  connection         Connection @relation(fields: [connectionId], references: [id])
+  mentor             User       @relation("MentorSessions", fields: [mentorId], references: [id])
+  mentee             User       @relation("MenteeSessions", fields: [menteeId], references: [id])
 }
 
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  title     String // Add this field
-  type      String // CONNECTION_REQUEST, MESSAGE, SESSION, etc.
+  title     String
+  type      String
   message   String
-  entityId  String? // Add this field to store related entity ID (message ID, session ID, etc.)
+  entityId  String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
@@ -114,7 +121,7 @@ model Resource {
   title       String
   description String?
   url         String
-  type        String // ARTICLE, VIDEO, DOCUMENT, etc.
+  type        String
   createdById String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
@@ -136,7 +143,7 @@ model ResourceCollection {
 model Progress {
   id        String   @id @default(cuid())
   userId    String
-  type      String // MENTAL_HEALTH, LEARNING, etc.
+  type      String
   score     Int
   notes     String?
   createdAt DateTime @default(now())

@@ -155,7 +155,10 @@ export default function AdminDashboard() {
       const response = await fetch("/api/admin/users/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, active: !currentStatus })
+        body: JSON.stringify({ 
+          userId, 
+          action: currentStatus ? "deactivate" : "activate" 
+        })
       });
 
       if (!response.ok) {

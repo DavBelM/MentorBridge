@@ -21,10 +21,19 @@ interface Connection {
   createdAt: string
 }
 
-export function ConnectionRequests() {
+// Update these constants to match your database enum values
+const STATUS_ACCEPTED = "ACCEPTED"
+const STATUS_REJECTED = "DECLINED" // Change to match your schema (DECLINED vs REJECTED)
+
+interface ConnectionRequestsProps {
+  onConnectionUpdate?: () => void;
+}
+
+export function ConnectionRequests({ onConnectionUpdate }: ConnectionRequestsProps) {
   const [connections, setConnections] = useState<Connection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
     fetchConnections()
@@ -47,28 +56,47 @@ export function ConnectionRequests() {
     }
   }
 
-  const handleResponse = async (connectionId: string, status: "ACCEPTED" | "REJECTED") => {
+  const handleResponse = async (connectionId: string, status: typeof STATUS_ACCEPTED | typeof STATUS_REJECTED) => {
+    setActionLoading(connectionId + status)
     try {
+      console.log(`Sending request to update connection ${connectionId} to ${status}`)
+      
       const response = await fetch("/api/matching", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId, status }),
       })
-
-      if (!response.ok) throw new Error("Failed to update connection")
-
+      
+      const data = await response.json()
+      console.log("Response from server:", data)
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update connection")
+      }
+      
       toast({
-        title: "Success",
-        description: `Connection request ${status.toLowerCase()}`,
+        title: status === STATUS_ACCEPTED ? "Connection Accepted" : "Connection Declined",
+        description: status === STATUS_ACCEPTED 
+          ? "You can now start mentoring this mentee" 
+          : "Connection request has been declined",
       })
-
+      
+      // Important: Refresh the list of pending requests
       fetchConnections()
+      
+      // If parent component has an onUpdate callback, call it to refresh the main page
+      if (typeof onConnectionUpdate === 'function') {
+        onConnectionUpdate()
+      }
     } catch (error) {
+      console.error("Error updating connection:", error)
       toast({
         title: "Error",
-        description: "Failed to update connection request",
+        description: error instanceof Error ? error.message : "Failed to update connection request",
         variant: "destructive",
       })
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -129,15 +157,25 @@ export function ConnectionRequests() {
               <div className="flex gap-2">
                 <Button
                   variant="default"
-                  onClick={() => handleResponse(connection.id, "ACCEPTED")}
+                  onClick={() => handleResponse(connection.id, STATUS_ACCEPTED)}
+                  disabled={actionLoading !== null}
                 >
-                  Accept
+                  {actionLoading === (connection.id + STATUS_ACCEPTED) ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Accepting</>
+                  ) : (
+                    "Accept"
+                  )}
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={() => handleResponse(connection.id, "REJECTED")}
+                  onClick={() => handleResponse(connection.id, STATUS_REJECTED)}
+                  disabled={actionLoading !== null}
                 >
-                  Decline
+                  {actionLoading === (connection.id + STATUS_REJECTED) ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Declining</>
+                  ) : (
+                    "Decline"
+                  )}
                 </Button>
               </div>
             </div>
@@ -146,4 +184,5 @@ export function ConnectionRequests() {
       ))}
     </div>
   )
-} 
+}
+

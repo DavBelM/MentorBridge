@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/context/auth-context"
+import { useSession } from "next-auth/react"  // Add this import
 import { get } from "@/lib/api-client"
 import { StatsCard } from "@/app/dashboard/stats-card"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,6 +63,7 @@ interface ProgressData {
 
 export default function MentorDashboardPage() {
   const { user } = useAuth()
+  const { data: session } = useSession()  // Add this line
   const [stats, setStats] = useState<MentorStats>({
     totalMentees: 0,
     activeSessions: 0,
@@ -292,7 +294,7 @@ export default function MentorDashboardPage() {
           </CardContent>
           <CardFooter>
             <Button variant="outline" asChild className="w-full">
-              <Link href="/dashboard/mentees">View All Mentees</Link>
+              <Link href="/dashboard/mentor/mentees">View All Mentees</Link>
             </Button>
           </CardFooter>
         </Card>

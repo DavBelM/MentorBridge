@@ -78,8 +78,15 @@ export async function apiClient<T = any>(endpoint: string, options: RequestInit 
 }
 
 // Convenience methods
-export const get = <T>(endpoint: string, config?: RequestInit) => 
-  apiClient<T>(endpoint, { ...config, method: 'GET' });
+export const get = async <T>(endpoint: string, config?: RequestInit): Promise<T | null> => {
+  try {
+    const response = await apiClient<T>(endpoint, { ...config, method: 'GET' });
+    return response;
+  } catch (error) {
+    console.error(`GET ${endpoint} failed:`, error);
+    return null;
+  }
+};
 
 // Update the post function to handle FormData correctly
 export const post = <T>(endpoint: string, body: any, config?: RequestInit) => {

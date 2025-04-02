@@ -69,13 +69,7 @@ export default function MentorDashboardLayout({
     })
   }
 
-  const handleNotificationClick = () => {
-    // Implement notification panel
-    toast({
-      title: "Notifications",
-      description: "Notification panel coming soon",
-    })
-  }
+  
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard/mentor", icon: LayoutDashboard },
@@ -148,17 +142,7 @@ export default function MentorDashboardLayout({
         <div className="w-64 flex-shrink-0 border-r bg-background">
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <h1 className="text-xl font-bold">Mentor Dashboard</h1>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative"
-              onClick={handleNotificationClick}
-            >
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                {notifications.filter(n => !n.read).length}
-              </Badge>
-            </Button>
+            
           </div>
           <div className="p-4 border-b">
             <form onSubmit={handleSearch} className="relative">

@@ -15,30 +15,34 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 import { Search, MessageSquare, Calendar, BarChart3, Target, MoreHorizontal, Filter, Users, Book, Clock, ArrowUpRight } from "lucide-react"
+import { get } from "@/lib/api-client"; // Adjust the path based on your project structure
 
 type Mentee = {
   id: number
   fullname: string
   email: string
-  connectedDate: string
   profile: {
     bio: string | null
     profilePicture: string | null
-    interests: string[] | null
-    learningGoals: string[] | null
+    interests?: any[] // Make interests optional
+    learningGoals?: any[] // Make learningGoals optional
+  }
+  connectionId: number
+  connectionStatus: string
+  // Add these required fields
+  connectedDate: string
+  lastSessionDate: string | null
+  nextSessionDate: string | null
+  goalsProgress: {
+    completed: number
+    inProgress: number
+    total: number
   }
   sessionStats: {
     completed: number
     upcoming: number
     totalHours: number
   }
-  goalsProgress: {
-    completed: number
-    inProgress: number
-    total: number
-  }
-  lastSessionDate: string | null
-  nextSessionDate: string | null
 }
 
 export default function MentorMenteesPage() {
@@ -54,22 +58,28 @@ export default function MentorMenteesPage() {
   // Fetch mentees
   useEffect(() => {
     async function fetchMentees() {
-      setIsLoading(true)
       try {
-        const response = await fetch("/api/mentees")
-        if (!response.ok) throw new Error("Failed to fetch mentees")
+        setIsLoading(true);
+        console.log("Fetching mentees...");
         
-        const data = await response.json()
-        setMentees(data)
+        const response = await get<{ mentees: Mentee[] }>('/api/mentees');
+        console.log("Mentees response:", response);
+        
+        if (response && response.mentees) {
+          setMentees(response.mentees);
+        } else {
+          setMentees([]);
+          console.error("No mentees data in response:", response);
+        }
       } catch (error) {
-        console.error("Error fetching mentees:", error)
+        console.error("Error fetching mentees:", error);
         toast({
           title: "Error",
-          description: "Failed to load mentees",
+          description: "Failed to fetch mentees",
           variant: "destructive",
-        })
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
     
@@ -144,8 +154,14 @@ export default function MentorMenteesPage() {
   
   // Format date for display
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Not scheduled"
-    return format(new Date(dateString), "MMM d, yyyy")
+    if (!dateString) return "Not scheduled";
+  
+    try {
+      return format(new Date(dateString), "MMM d, yyyy");
+    } catch (error) {
+      console.error("Invalid date:", dateString);
+      return "Invalid date";
+    }
   }
   
   return (
@@ -312,11 +328,17 @@ export default function MentorMenteesPage() {
                     </div>
                     
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {mentee.profile.interests && mentee.profile.interests.slice(0, 3).map((interest, i) => (
-                        <Badge key={i} variant="secondary">{interest}</Badge>
-                      ))}
-                      {mentee.profile.interests && mentee.profile.interests.length > 3 && (
-                        <Badge variant="outline">+{mentee.profile.interests.length - 3} more</Badge>
+                      {mentee.profile.interests && mentee.profile.interests.length > 0 ? (
+                        <>
+                          {mentee.profile.interests.slice(0, 3).map((interest, i) => (
+                            <Badge key={i} variant="secondary">{interest}</Badge>
+                          ))}
+                          {mentee.profile.interests.length > 3 && (
+                            <Badge variant="outline">+{mentee.profile.interests.length - 3} more</Badge>
+                          )}
+                        </>
+                      ) : (
+                        <Badge variant="secondary">No interests specified</Badge>
                       )}
                     </div>
                   </CardContent>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { PenSquare } from "lucide-react"
+import { PenSquare, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -74,17 +74,14 @@ export default function MentorProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="col-span-1">
           <CardContent className="pt-6 flex flex-col items-center">
-            {profile?.profile?.profilePicture ? (
-              <img
-                src={profile.profile.profilePicture}
-                alt={profile.fullname}
-                className="h-32 w-32 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center">
-                <AvatarFallback>{profile?.fullname ? profile.fullname.charAt(0) : '?'}</AvatarFallback>
-              </div>
-            )}
+            <Avatar className="h-32 w-32">
+              {profile?.profile?.profilePicture && (
+                <AvatarImage src={profile.profile.profilePicture} alt={profile.fullname || ''} />
+              )}
+              <AvatarFallback>
+                {profile?.fullname ? profile.fullname.charAt(0) : <User className="h-16 w-16" />}
+              </AvatarFallback>
+            </Avatar>
             <h2 className="mt-4 text-xl font-semibold">{profile?.fullname}</h2>
             <p className="text-muted-foreground">{profile?.email}</p>
             

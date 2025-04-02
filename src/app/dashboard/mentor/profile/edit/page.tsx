@@ -42,50 +42,6 @@ export default function EditMentorProfilePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [filePreview, setFilePreview] = useState<string | null>(null)
 
-  // Fetch profile data when component mounts
-  useEffect(() => {
-    async function fetchProfileData() {
-      if (session?.user) {
-        try {
-          const response = await fetch("/api/profile")
-          if (response.ok) {
-            const data = await response.json()
-            setProfileData(data)
-            
-            // Set form default values after data is loaded
-            form.reset({
-              bio: data?.profile?.bio || "",
-              location: data?.profile?.location || "",
-              linkedin: data?.profile?.linkedin || "",
-              twitter: data?.profile?.twitter || "",
-              experience: data?.profile?.experience || "",
-              skills: data?.profile?.skills || "",
-              availability: data?.profile?.availability || "",
-            })
-            
-            // Set profile picture preview if it exists
-            if (data?.profile?.profilePicture) {
-              setFilePreview(data.profile.profilePicture)
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching profile:", error)
-          toast({
-            title: "Error",
-            description: "Failed to load profile data",
-            variant: "destructive"
-          })
-        } finally {
-          setIsLoading(false)
-        }
-      } else {
-        setIsLoading(false)
-      }
-    }
-    
-    fetchProfileData()
-  }, [session, toast])
-
   const form = useForm<FormValues>({
     resolver: zodResolver(mentorSchema),
     defaultValues: {
@@ -98,6 +54,69 @@ export default function EditMentorProfilePage() {
       availability: "",
     },
   })
+
+  // Fetch profile data when component mounts
+  useEffect(() => {
+    async function fetchProfileData() {
+      if (session?.user) {
+        try {
+          setIsLoading(true);
+          const response = await fetch("/api/profile");
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Profile data loaded:", data);
+            
+            setProfileData(data);
+            
+            // Set profile picture preview if it exists
+            if (data?.profile?.profilePicture) {
+              setFilePreview(data.profile.profilePicture);
+            }
+            
+            // Convert skills array to string if needed
+            let skillsStr = "";
+            if (data?.profile?.skills) {
+              skillsStr = Array.isArray(data.profile.skills) 
+                ? data.profile.skills.join(", ") 
+                : data.profile.skills;
+            }
+            
+            // Add a small delay to ensure state updates first
+            setTimeout(() => {
+              // Reset form with existing values
+              form.reset({
+                bio: data?.profile?.bio || "",
+                location: data?.profile?.location || "",
+                linkedin: data?.profile?.linkedin || "",
+                twitter: data?.profile?.twitter || "",
+                experience: data?.profile?.experience || "",
+                skills: skillsStr,
+                availability: data?.profile?.availability || "",
+              });
+            }, 100);
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to load profile data", 
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+          toast({
+            title: "Error",
+            description: "Failed to load profile data",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    }
+    
+    fetchProfileData();
+  }, [session, toast]);
 
   // Set up file dropzone for profile picture
   const { getRootProps, getInputProps } = useDropzone({

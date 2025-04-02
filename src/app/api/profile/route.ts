@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
+        id: true,
         fullname: true,
+        email: true,
         username: true,
         role: true,
         isApproved: true,
@@ -59,36 +61,30 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Calculate completion percentage
-    let completionPercentage = 0;
-    let requiredFields = ['fullname', 'username'];
-    
-    if (profile) {
-      // Add profile-specific required fields
-      if (user?.role === 'MENTOR') {
-        requiredFields = [...requiredFields, 'bio', 'location', 'skills', 'education', 'availability'];
-      } else {
-        requiredFields = [...requiredFields, 'bio', 'interests'];
-      }
-      
-      const profileData = { ...user, ...profile } as Record<string, any>;
-      const completedFields = requiredFields.filter(field => 
-        profileData[field] && (
-          typeof profileData[field] === 'string' ? 
-          profileData[field].trim() !== '' : 
-          true
-        )
-      );
-      
-      completionPercentage = Math.round((completedFields.length / requiredFields.length) * 100);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    
+
+    // Format response to match what the edit form expects
     return NextResponse.json({
-      exists: !!profile,
-      profile,
-      user,
-      completionPercentage,
-      isComplete: completionPercentage === 100
+      id: user.id,
+      fullname: user.fullname || "",
+      email: user.email || "",
+      username: user.username || "",
+      role: user.role,
+      profile: profile ? {
+        bio: profile.bio,
+        location: profile.location,
+        skills: profile.skills,
+        education: profile.education,
+        availability: profile.availability,
+        profilePicture: profile.profilePicture,
+        linkedin: profile.linkedin,
+        twitter: profile.twitter,
+        createdAt: profile.createdAt,
+        interests: profile.interests,
+        learningGoals: profile.learningGoals,
+      } : null
     });
   } catch (error) {
     console.error('Error checking profile:', error);

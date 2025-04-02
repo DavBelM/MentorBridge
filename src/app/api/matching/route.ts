@@ -110,50 +110,52 @@ export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { connectionId, status } = await req.json()
-
-    const connection = await prisma.connection.update({
-      where: { id: connectionId },
-      data: { status },
-    })
-    if (status === "ACCEPTED") {
-      await prisma.notification.createMany({
-        data: [
-          {
-            userId: connection.menteeId,
-            title: "Request Accepted",
-            type: "REQUEST_ACCEPTED",
-            message: "Your connection request has been accepted",
-            read: false,
-          },
-          {
-            userId: connection.mentorId,
-            title: "Connection Made",
-            type: "CONNECTION_MADE",
-            message: "You have accepted a new connection",
-            read: false,
-          },
-        ],
-      })
-    } else if (status === "REJECTED") {
-      await prisma.notification.create({
-        data: {
-          userId: connection.menteeId,
-          title: "Request Rejected",
-          type: "REQUEST_REJECTED",
-          message: "Your connection request has been declined",
-          read: false,
-        },
-      })
+    
+    if (!connectionId || !status) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
-
-    return NextResponse.json(connection)
+    
+    // Verify the mentor is authorized to update this connection
+    const connection = await prisma.connection.findUnique({
+      where: { id: connectionId },
+      select: { mentorId: true }
+    })
+    
+    if (!connection) {
+      return NextResponse.json({ error: "Connection not found" }, { status: 404 })
+    }
+    
+    if (connection.mentorId !== session.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+    
+    // Update the connection status
+    const updatedConnection = await prisma.connection.update({
+      where: { id: connectionId },
+      data: { status }
+    })
+    
+    // Create a notification for the mentee
+    await prisma.notification.create({
+      data: {
+        userId: updatedConnection.menteeId,
+        title: status === "ACCEPTED" ? "Connection Accepted" : "Connection Declined",
+        message: status === "ACCEPTED" 
+          ? "Your connection request has been accepted! You can now start your mentoring journey." 
+          : "Your connection request has been declined.",
+        type: "CONNECTION_UPDATE",
+        entityId: connectionId
+      }
+    })
+    
+    return NextResponse.json({ success: true, connection: updatedConnection })
   } catch (error) {
-    console.error("[MATCHING_ERROR]", error)
-    return new NextResponse("Internal Error", { status: 500 })
+    console.error("Error updating connection:", error)
+    return NextResponse.json({ error: "Failed to update connection" }, { status: 500 })
   }
 }
 
