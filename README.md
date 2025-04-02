@@ -5,8 +5,6 @@
   <p>A modern platform that bridges the gap between mentors and mentees, creating meaningful connections for professional growth.</p>
 </div>
 
-![MentorBridge Dashboard Demo](https://i.imgur.com/example.png)
-
 ## ✨ Overview
 
 MentorBridge is designed to democratize access to mentorship by connecting experienced professionals with those seeking guidance. Our platform facilitates structured knowledge sharing, skill development, and career advancement through a user-friendly interface and powerful matching algorithms.
@@ -296,7 +294,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  <p>Developed with ❤️ by Your Name/Team</p>
+  <p>Developed by Bela Mitali</p>
   <p>
     <a href="https://twitter.com/yourhandle">Twitter</a> •
     <a href="https://linkedin.com/in/yourprofile">LinkedIn</a> •
