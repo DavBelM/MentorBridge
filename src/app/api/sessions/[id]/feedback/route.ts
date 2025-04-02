@@ -13,11 +13,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const sessionId = parseInt(params.id);
-    if (isNaN(sessionId)) {
-      return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
-    }
-
+    const sessionId = params.id;
+    
     const { feedback } = await req.json();
 
     // Verify the user is authorized to update this session
@@ -30,8 +27,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Ensure the user is the mentor of this session
-    if (mentorSession.mentorId !== parseInt(session.user.id)) {
+    // Ensure the user is the mentor of this session - compare strings
+    if (mentorSession.mentorId !== session.user.id) {
       return NextResponse.json({ error: "Not authorized to update this session" }, { status: 403 });
     }
 
@@ -48,7 +45,7 @@ export async function PATCH(
         title: "New Session Feedback",
         message: "Your mentor has provided feedback for your session.",
         type: "SESSION_FEEDBACK",
-        entityId: sessionId.toString(),
+        entityId: sessionId,
       },
     });
 
