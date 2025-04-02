@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Bell, Check } from "lucide-react"
+import { Bell, Check, Trash2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { format } from "date-fns"
@@ -83,6 +83,46 @@ export default function NotificationsPage() {
     }
   }
 
+  async function deleteNotification(notificationId: string) {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId })
+      })
+      
+      if (!response.ok) throw new Error('Failed to delete notification')
+      
+      // Update local state
+      setNotifications(notifications.filter(n => n.id !== notificationId))
+      
+      // Show success toast if you have that component
+      // toast({ title: "Success", description: "Notification deleted" })
+    } catch (err) {
+      console.error('Error deleting notification:', err)
+    }
+  }
+
+  async function clearAllNotifications() {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearAll: true })
+      })
+      
+      if (!response.ok) throw new Error('Failed to clear notifications')
+      
+      // Update local state
+      setNotifications([])
+      
+      // Show success toast if you have that component
+      // toast({ title: "Success", description: "All notifications cleared" })
+    } catch (err) {
+      console.error('Error clearing notifications:', err)
+    }
+  }
+
   function getTypeLabel(type: string) {
     if (type.includes("MESSAGE")) return 'Message'
     if (type.includes("SESSION")) return 'Session'
@@ -136,6 +176,15 @@ export default function NotificationsPage() {
             >
               <Check className="mr-1 h-4 w-4" />
               Mark all as read
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={clearAllNotifications}
+              disabled={notifications.length === 0}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Clear all
             </Button>
           </div>
         </CardHeader>
@@ -203,6 +252,15 @@ export default function NotificationsPage() {
                                 <span className="sr-only">Mark as read</span>
                               </Button>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => deleteNotification(notification.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
                           </div>
                         </div>
                         <p className="text-sm text-foreground">{notification.message}</p>

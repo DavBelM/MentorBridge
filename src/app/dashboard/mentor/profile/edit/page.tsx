@@ -151,25 +151,38 @@ export default function EditMentorProfilePage() {
     
     try {
       const formData = new FormData();
-      formData.append("bio", data.bio || "");
-      formData.append("location", data.location || "");
-      formData.append("linkedin", data.linkedin || "");
-      formData.append("twitter", data.twitter || "");
-      formData.append("experience", data.experience || "");
-      formData.append("skills", data.skills || "");
-      formData.append("availability", data.availability || "");
       
-      if (data.profilePicture) {
-        formData.append("profilePicture", data.profilePicture);
-      }
+      // Add all form fields
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          if (key === 'profilePicture' && value instanceof File) {
+            formData.append(key, value);
+          } else if (typeof value === 'string' || typeof value === 'number') {
+            formData.append(key, String(value));
+          }
+        }
+      });
+      
+      console.log("Sending form data:", Object.fromEntries(formData.entries()));
       
       const response = await fetch("/api/profile", {
         method: "PUT",
         body: formData,
       });
       
+      // Try to parse the response
+      let result;
+      const responseText = await response.text();
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", responseText);
+        result = { error: "Invalid response format", raw: responseText };
+      }
+      
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        console.error("API error response:", result);
+        throw new Error(result.message || result.error || "Failed to update profile");
       }
       
       toast({
@@ -182,7 +195,7 @@ export default function EditMentorProfilePage() {
       console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: error instanceof Error ? error.message : "Failed to update profile",
         variant: "destructive",
       });
     } finally {

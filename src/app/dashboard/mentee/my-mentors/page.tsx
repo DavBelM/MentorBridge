@@ -23,7 +23,7 @@ type Connection = {
     profile: {
       profilePicture: string | null
       bio: string | null
-      skills: string | null
+      skills: string[] | string | null
     }
   }
 }
@@ -130,9 +130,16 @@ export default function MyMentorsPage() {
     }
   }
   
-  const parsedSkills = (skills?: string | null) => {
-    if (!skills) return []
-    return skills.split(',').map(s => s.trim()).filter(Boolean)
+  const parsedSkills = (skills?: string | string[] | null) => {
+    if (!skills) return [];
+    
+    // If skills is already an array, return it
+    if (Array.isArray(skills)) {
+      return skills;
+    }
+    
+    // Otherwise treat it as a string and split it
+    return skills.split(',').map(s => s.trim()).filter(Boolean);
   }
 
   return (

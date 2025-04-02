@@ -47,8 +47,8 @@ interface AuthContextType {
   clearError: () => void
   updateUser: (userData: Partial<User>) => void
   checkUsernameAvailability: (username: string) => Promise<{available: boolean, error?: string}>
+  hasProfile: boolean | null
 }
-
 // Create the context with a default value
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -61,6 +61,7 @@ const AuthContext = createContext<AuthContextType>({
   clearError: () => {},
   updateUser: () => {},
   checkUsernameAvailability: async () => ({ available: false }),
+  hasProfile: null,
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (session?.user) {
@@ -87,6 +89,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
     }
   }, [status, session, router]);
+
+  useEffect(() => {
+    // After confirming user is authenticated
+    if (user?.id) {
+      // Check if user has a profile
+      async function checkProfile() {
+        try {
+          const response = await fetch('/api/profile');
+          if (response.ok) {
+            const data = await response.json();
+            setHasProfile(!!data.profile); // Set to true if profile exists
+          } else {
+            setHasProfile(false);
+          }
+        } catch (error) {
+          console.error("Error checking profile:", error);
+          setHasProfile(false);
+        }
+      }
+      
+      checkProfile();
+    }
+  }, [user]);
 
   // Login function with optimizations
   const login = async (email: string, password: string) => {
@@ -234,7 +259,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         clearError,
         updateUser,
-        checkUsernameAvailability
+        checkUsernameAvailability,
+        hasProfile
       }}
     >
       {children}

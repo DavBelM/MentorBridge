@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Bell, Check, ExternalLink } from 'lucide-react'
+import { Bell, Check, ExternalLink, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -71,6 +71,42 @@ export function NotificationsDropdown({ userRole = "MENTEE" }: { userRole?: stri
       ))
     } catch (err) {
       console.error('Error marking notification as read:', err)
+    }
+  }
+
+  async function deleteNotification(notificationId: string, e?: React.MouseEvent) {
+    if (e) e.stopPropagation(); // Prevent triggering the notification click
+    
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId })
+      })
+      
+      if (!response.ok) throw new Error('Failed to delete notification')
+      
+      // Update local state
+      setNotifications(notifications.filter(n => n.id !== notificationId))
+    } catch (err) {
+      console.error('Error deleting notification:', err)
+    }
+  }
+
+  async function clearAllNotifications() {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearAll: true })
+      })
+      
+      if (!response.ok) throw new Error('Failed to clear notifications')
+      
+      // Update local state
+      setNotifications([])
+    } catch (err) {
+      console.error('Error clearing notifications:', err)
     }
   }
 
@@ -188,17 +224,30 @@ export function NotificationsDropdown({ userRole = "MENTEE" }: { userRole?: stri
       <PopoverContent className="w-[320px] md:w-[380px] p-0" align="end">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h3 className="font-medium">Notifications</h3>
-          {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 text-xs"
-              onClick={markAllAsRead}
-            >
-              <Check className="mr-1 h-3.5 w-3.5" />
-              Mark all as read
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 text-xs"
+                onClick={markAllAsRead}
+              >
+                <Check className="mr-1 h-3.5 w-3.5" />
+                Mark all as read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 text-xs"
+                onClick={clearAllNotifications}
+              >
+                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
         
         <ScrollArea className="h-[300px] md:h-[400px] overflow-y-auto">
@@ -264,6 +313,15 @@ export function NotificationsDropdown({ userRole = "MENTEE" }: { userRole?: stri
                       <span className="sr-only">Mark as read</span>
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive/70 flex-shrink-0"
+                    onClick={(e) => deleteNotification(notification.id, e)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="sr-only">Delete</span>
+                  </Button>
                 </div>
               ))}
             </div>

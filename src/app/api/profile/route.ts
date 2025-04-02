@@ -151,7 +151,15 @@ export async function PUT(request: Request) {
     
     // Add role-specific fields
     if (session.user.role === "MENTOR") {
-      if (fields.skills) data.skills = fields.skills;
+      if (fields.skills) {
+        // Handle empty string case
+        const skillsValue = fields.skills.trim();
+        data.skills = skillsValue ? 
+          skillsValue.split(',').map(skill => skill.trim()).filter(Boolean) : 
+          [];
+        
+        console.log("Converted skills array:", data.skills);
+      }
       if (fields.experience) data.experience = fields.experience;
       if (fields.availability) data.availability = fields.availability;
     } else if (session.user.role === "MENTEE") {

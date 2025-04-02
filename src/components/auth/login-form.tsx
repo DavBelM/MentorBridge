@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
+import { useRouter } from 'next/router'
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -27,6 +28,7 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -67,7 +69,7 @@ export function LoginForm() {
         })
         
         // NextAuth will handle the redirect in middleware
-        window.location.href = "/dashboard"
+        await onSuccess()
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -82,6 +84,29 @@ export function LoginForm() {
       setIsLoading(false)
     }
   }
+
+  const onSuccess = async () => {
+    // After successful login
+    try {
+      const profileRes = await fetch('/api/profile');
+      const profileData = await profileRes.json();
+      
+      if (profileData.profile) {
+        // If profile exists, go to dashboard
+        const user = profileData.profile;
+        const dashboardPath = user.role.toLowerCase() === 'mentor' 
+          ? '/dashboard/mentor' 
+          : '/dashboard/mentee';
+        router.push(dashboardPath);
+      } else {
+        // If no profile, go to profile setup
+        router.push('/profile/setup');
+      }
+    } catch (error) {
+      // Default to profile setup if check fails
+      router.push('/profile/setup');
+    }
+  };
 
   return (
     <div className="space-y-4">

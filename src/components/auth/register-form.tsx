@@ -63,15 +63,12 @@ export function RegisterForm() {
   })
 
   async function onSubmit(data: RegisterFormValues) {
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
-      // Making direct API call instead of using context
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullname: data.fullName,
           username: data.username,
@@ -87,31 +84,30 @@ export function RegisterForm() {
         throw new Error(result.error || 'Failed to register');
       }
       
+      // Show success toast
       toast({
         title: "Registration Successful",
-        description: "Your account has been created. Redirecting to profile setup...",
+        description: "Your account has been created. Redirecting...",
       });
       
-      // Redirect to profile setup
+      // Sign in the user automatically after registration
+      await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+      
+      // Redirect to profile setup page instead of directly to dashboard
       router.push("/profile/setup");
-      
     } catch (error) {
-      console.error(error)
-      const errorMessage = error instanceof Error ? error.message : "Failed to register"
-      
+      console.error('Registration error:', error);
       toast({
         title: "Registration Failed",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
-      
-      // Set form error
-      form.setError("root", {
-        type: "manual",
-        message: errorMessage,
-      })
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 

@@ -134,6 +134,9 @@ export default function MentorDashboardLayout({
             </nav>
           </div>
         )}
+        <div className="pt-4 px-2 overflow-x-hidden">
+          {children}
+        </div>
       </div>
 
       {/* Desktop layout */}
@@ -196,9 +199,11 @@ export default function MentorDashboardLayout({
               </div>
             </div>
           </div>
-          <main className="p-6">
-            {children}
-          </main>
+         <div className="flex-1 overflow-auto">
+            <main className="p-6">
+              {children}
+            </main>
+         </div>
         </div>
       </div>
     </div>
