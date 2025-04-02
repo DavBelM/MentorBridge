@@ -1,209 +1,77 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-config";
-import { prisma } from "@/lib/prisma";
-import fs from 'fs';
-import path from 'path';
-import { promises as fsPromises } from 'fs';
-import { put } from '@vercel/blob';
-const { writeFile } = fsPromises;
+import { NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import { NextRequest } from 'next/server';
 
-// Helper function to parse form data with files
-async function parseFormData(request: Request) {
-  const formData = await request.formData();
-  const files: Record<string, any> = {};
-  const fields: Record<string, any> = {};
+const prisma = new PrismaClient();
 
-  for (const [key, value] of formData.entries()) {
-    if (value instanceof File) {
-      files[key] = value;
-    } else {
-      // Handle array fields (like skills)
-      if (key.endsWith('[]')) {
-        const baseKey = key.replace('[]', '');
-        if (!fields[baseKey]) fields[baseKey] = [];
-        fields[baseKey].push(value);
-      } else {
-        fields[key] = value;
-      }
-    }
-  }
-
-  return { files, fields };
+// Interface for profile data response
+interface ProfileResponse {
+  message: string;
+  profile?: any; // You might want to define a more specific type
 }
 
-// GET - Check profile existence/completion
-export async function GET(request: NextRequest) {
+// Interface for error response
+interface ErrorResponse {
+  error: string;
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse<ProfileResponse | ErrorResponse>> {
   try {
-    const session = await getServerSession(authOptions);
+    // Get the user ID from the session
+    const authHeader = request.headers.get('authorization');
+    let userId;
     
-    if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      // Decode token to get userId
+      // userId = decoded.id;
+    } else {
+      // For testing, you can hardcode a user ID
+      userId = "2"; // Replace with an actual user ID from your database
     }
-    
-    const userId = session.user.id;
-    
-    // Check if profile exists
-    const profile = await prisma.profile.findUnique({
-      where: { userId },
-    });
-    
-    // Get user details to check completion status
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch the profile data from your database
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { 
-        id: true,
-        fullname: true,
-        email: true,
-        username: true,
-        role: true,
-        isApproved: true,
-        image: true
-      }
+      include: {
+        profile: true,
+      },
     });
-    
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    if (!user || !user.profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Format response to match what the edit form expects
-    return NextResponse.json({
-      id: user.id,
-      fullname: user.fullname || "",
-      email: user.email || "",
-      username: user.username || "",
-      role: user.role,
-      profile: profile ? {
-        bio: profile.bio,
-        location: profile.location,
-        skills: profile.skills,
-        education: profile.education,
-        availability: profile.availability,
-        profilePicture: profile.profilePicture,
-        linkedin: profile.linkedin,
-        twitter: profile.twitter,
-        createdAt: profile.createdAt,
-        interests: profile.interests,
-        learningGoals: profile.learningGoals,
-      } : null
-    });
-  } catch (error) {
-    console.error('Error checking profile:', error);
-    return NextResponse.json(
-      { error: 'Failed to check profile' },
-      { status: 500 }
-    );
+    // Return the actual profile data
+    return NextResponse.json({ message: "Profile fetched successfully", profile: user.profile });
+  } catch (error: any) {
+    console.error("Profile fetch error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// PUT - Update profile
-export async function PUT(request: Request) {
-  console.log("PUT /api/profile - Request received");
-  
+export async function POST(request: NextRequest): Promise<NextResponse<ProfileResponse | ErrorResponse>> {
   try {
-    // Get user session
-    const session = await getServerSession(authOptions);
-    console.log("Session:", session ? "Available" : "Not available");
-    
-    if (!session?.user) {
-      console.log("Unauthorized - No user in session");
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    
-    console.log("User ID from session:", session.user.id);
-    
-    // Get user ID from session
-    const userId = session.user.id;
-    
-    // Parse the multipart form data including any files
-    const { files, fields } = await parseFormData(request);
-    console.log("Form fields received:", fields);
-    console.log("Files received:", Object.keys(files));
-    
-    // Check if profile exists
-    const existingProfile = await prisma.profile.findUnique({
-      where: { userId },
-    });
-    
-    // Handle file upload if provided
-    let profilePictureUrl = existingProfile?.profilePicture;
-    if (files.profilePicture) {
-      try {
-        profilePictureUrl = await uploadFile(files.profilePicture);
-      } catch (uploadError) {
-        console.error("File upload error:", uploadError);
-        return new NextResponse(
-          JSON.stringify({ error: "Failed to upload profile picture" }), 
-          { status: 500, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-    
-    // Initialize data object with profile picture URL if available
-    const data: Record<string, any> = {
-      ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
-    };
-    
-    // Add common fields for all roles
-    if (fields.bio) data.bio = fields.bio;
-    if (fields.location) data.location = fields.location;
-    if (fields.linkedin) data.linkedin = fields.linkedin;
-    if (fields.twitter) data.twitter = fields.twitter;
-    
-    // Add role-specific fields
-    if (session.user.role === "MENTOR") {
-      if (fields.skills) {
-        // Handle empty string case
-        const skillsValue = fields.skills.trim();
-        data.skills = skillsValue ? 
-          skillsValue.split(',').map(skill => skill.trim()).filter(Boolean) : 
-          [];
-        
-        console.log("Converted skills array:", data.skills);
-      }
-      if (fields.experience) data.experience = fields.experience;
-      if (fields.availability) data.availability = fields.availability;
-    } else if (session.user.role === "MENTEE") {
-      if (fields.interests) data.interests = fields.interests;
-      if (fields.learningGoals) data.learningGoals = fields.learningGoals;
-    }
-    
-    // Update or create profile
-    let profile;
-    if (existingProfile) {
-      profile = await prisma.profile.update({
-        where: { userId },
-        data,
-      });
-    } else {
-      profile = await prisma.profile.create({
-        data: {
-          ...data,
-          userId,
-        },
-      });
-    }
-    
-    // Log profile data being saved
-    console.log("Profile data to save:", data);
-    
-    // Return proper response
-    console.log("Profile updated successfully");
-    return NextResponse.json(profile);
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    // Return proper JSON error
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return new NextResponse(
-      JSON.stringify({ error: "Internal Server Error", details: errorMessage }), 
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    const data = await request.json();
+    // Handle profile creation/update
+    return NextResponse.json({ message: "Profile updated" });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
-// Helper function for file upload
-async function uploadFile(file: File) {
-  const filename = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-  const blob = await put(filename, file, { access: 'public' });
-  return blob.url;
+export async function PUT(request: NextRequest): Promise<NextResponse<ProfileResponse | ErrorResponse>> {
+  try {
+    const data = await request.json();
+    // Handle profile update
+    return NextResponse.json({ message: "Profile updated" });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
 }

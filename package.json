@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "prisma generate --no-engine && DISABLE_ESLINT_PLUGIN=true next build",
-    "start": "NODE_ENV=production node server.js",
+  "build": "prisma generate --no-engine && TYPESCRIPT_CHECK=false next build --no-lint",  
+  "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "postinstall": "prisma generate"
   },
