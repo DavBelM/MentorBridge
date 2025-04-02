@@ -39,8 +39,8 @@ export default function MenteesPage() {
     async function fetchMentees() {
       setIsLoading(true)
       try {
-        const { mentees } = await get<{ mentees: Mentee[] }>('/api/mentees')
-        setMentees(mentees)
+        const response = await get<{ mentees: Mentee[] } | null>('/api/mentees')
+        setMentees(response?.mentees || [])
       } catch (error) {
         console.error('Error fetching mentees:', error)
         toast({

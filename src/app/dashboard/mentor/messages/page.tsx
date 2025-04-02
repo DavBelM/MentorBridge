@@ -55,6 +55,7 @@ export default function MentorMessagesPage() {
   const [selectedContact, setSelectedContact] = useState<{id: number, name: string, avatar: string | null} | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [socket, setSocket] = useState<Socket | null>(null)
   
   // Get active thread from URL
   useEffect(() => {
@@ -63,6 +64,62 @@ export default function MentorMessagesPage() {
       setActiveThread(parseInt(threadIdParam))
     }
   }, [searchParams])
+  
+  // Check for menteeId parameter (add this code after the threadId useEffect)
+  useEffect(() => {
+    const menteeIdParam = searchParams.get("menteeId")
+    
+    if (menteeIdParam && session?.user?.id) {
+      async function findOrCreateThread() {
+        try {
+          setIsLoading(true)
+          const response = await fetch('/api/messages/threads/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ menteeId: menteeIdParam }),
+          })
+          
+          if (!response.ok) throw new Error('Failed to find or create thread')
+          
+          const data = await response.json()
+          if (data.threadId) {
+            setActiveThread(data.threadId)
+            
+            // Update URL to use threadId parameter
+            router.push(`/dashboard/mentor/messages?threadId=${data.threadId}`, { scroll: false })
+            
+            // Refresh threads to make sure this thread appears
+            const threadsResponse = await fetch("/api/messages/threads")
+            if (threadsResponse.ok) {
+              const threadsData = await threadsResponse.json()
+              setThreads(Array.isArray(threadsData) ? threadsData : [])
+              
+              // Find the thread to get contact info
+              const thread = threadsData.find((t: Thread) => t.id === data.threadId)
+              if (thread) {
+                setSelectedContact({
+                  id: thread.contact.id,
+                  name: thread.contact.fullname,
+                  avatar: thread.contact.profile?.profilePicture || null
+                })
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error finding or creating thread:', error)
+          toast({
+            title: 'Error',
+            description: 'Could not start conversation with this mentee',
+            variant: 'destructive',
+          })
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      
+      findOrCreateThread()
+    }
+  }, [searchParams, session, router, toast])
   
   // Fetch threads
   useEffect(() => {
@@ -124,7 +181,9 @@ export default function MentorMessagesPage() {
         setMessages(Array.isArray(data) ? data : [])
         
         // Mark thread as read
-        markThreadAsRead(activeThread)
+        if (activeThread !== null) {
+          markThreadAsRead(activeThread)
+        }
         
         // Update thread unread count in the thread list
         setThreads(prevThreads => 
@@ -155,6 +214,73 @@ export default function MentorMessagesPage() {
     }
   }, [messages])
   
+  // Initialize socket connection
+  useEffect(() => {
+    if (session?.user?.id) {
+      const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || "", {
+        query: { userId: session.user.id },
+      })
+      
+      setSocket(socketInstance)
+      
+      return () => {
+        socketInstance.disconnect()
+      }
+    }
+  }, [session])
+  
+  // Setup message listeners
+  useEffect(() => {
+    if (!socket) return
+    
+    // Listen for new messages
+    socket.on("new_message", (data: Message) => {
+      // If the message is for the active thread, add it to messages
+      if (data.threadId === activeThread) {
+        setMessages(prev => [...prev, data])
+      }
+      
+      // Update the thread list to show new message info
+      setThreads(prev => {
+        return prev.map(thread => {
+          if (thread.id === data.threadId) {
+            return {
+              ...thread,
+              lastMessage: {
+                id: data.id,
+                content: data.content,
+                senderId: data.senderId,
+                createdAt: data.createdAt,
+              },
+              unreadCount: thread.id !== activeThread ? thread.unreadCount + 1 : 0,
+              updatedAt: data.createdAt,
+            }
+          }
+          return thread
+        })
+      })
+    })
+    
+    // Listen for read receipts
+    socket.on("message_read", (threadId: number) => {
+      if (threadId) {
+        setThreads(prev => {
+          return prev.map(thread => {
+            if (thread.id === threadId) {
+              return { ...thread, unreadCount: 0 }
+            }
+            return thread
+          })
+        })
+      }
+    })
+    
+    return () => {
+      socket.off("new_message")
+      socket.off("message_read")
+    }
+  }, [socket, activeThread, threads])
+  
   // Filter threads based on search
   const filteredThreads = Array.isArray(threads) 
     ? threads.filter(thread => 
@@ -164,6 +290,9 @@ export default function MentorMessagesPage() {
   
   // Mark thread as read
   async function markThreadAsRead(threadId: number) {
+    if(socket) {
+      socket.emit("mark_thread_as_read", threadId)
+    }
     try {
       await fetch(`/api/messages/threads/${threadId}/read`, {
         method: "POST",
@@ -171,8 +300,14 @@ export default function MentorMessagesPage() {
           "Content-Type": "application/json",
         },
       })
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error marking thread as read:", error)
+      toast({
+        title: "Error",
+        description: "Failed to mark thread as read",
+        variant: "destructive",
+      })
     }
   }
   
@@ -190,74 +325,44 @@ export default function MentorMessagesPage() {
   }
   
   // Send a message
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newMessage.trim() || !activeThread) return
-    
-    // Optimistically add message to the UI
-    const tempId = Date.now()
-    const tempMessage: Message = {
-      id: tempId,
-      content: newMessage,
-      senderId: session?.user?.id as number,
-      threadId: activeThread,
-      createdAt: new Date().toISOString(),
-      pending: true
-    }
-    
-    setMessages(prev => [...prev, tempMessage])
-    setNewMessage("")
-    
-    try {
-      const response = await fetch(`/api/messages/threads/${activeThread}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: newMessage }),
-      })
-      
-      if (!response.ok) throw new Error("Failed to send message")
-      
-      const data = await response.json()
-      
-      // Replace the temp message with the real one
-      setMessages(messages => 
-        messages.map(msg => 
-          msg.id === tempId ? data : msg
-        )
-      )
-      
-      // Update thread in the list
-      setThreads(threads => 
-        threads.map(thread => 
-          thread.id === activeThread 
-            ? { 
-                ...thread, 
-                lastMessage: {
-                  id: data.id,
-                  content: data.content,
-                  senderId: data.senderId,
-                  createdAt: data.createdAt
-                }, 
-                updatedAt: data.createdAt,
-                unreadCount: 0
-              } 
-            : thread
-        )
-      )
-    } catch (error) {
-      console.error("Error sending message:", error)
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive",
-      })
-      
-      // Remove the pending message
-      setMessages(messages => messages.filter(msg => msg.id !== tempId))
-    }
+  // Replace the HTTP sendMessage with this socket version
+async function sendMessage(e: React.FormEvent) {
+  e.preventDefault()
+  if (!newMessage.trim() || !activeThread || !socket) return
+  
+  // Optimistically add message to the UI
+  const tempId = Date.now()
+  const tempMessage: Message = {
+    id: tempId,
+    content: newMessage,
+    senderId: session?.user?.id ? Number(session.user.id) : 0,
+    threadId: activeThread,
+    createdAt: new Date().toISOString(),
+    pending: true
   }
+  
+  setMessages(prev => [...prev, tempMessage])
+  setNewMessage("")
+  
+  try {
+    // Emit message through socket
+    socket.emit("send_message", {
+      content: newMessage,
+      threadId: activeThread,
+      receiverId: selectedContact?.id
+    })
+  } catch (error) {
+    console.error("Error sending message:", error)
+    toast({
+      title: "Error",
+      description: "Failed to send message",
+      variant: "destructive",
+    })
+    
+    // Remove the pending message
+    setMessages(messages => messages.filter(msg => msg.id !== tempId))
+  }
+}
   
   // Format time for display
   function formatMessageTime(dateString: string) {
@@ -373,7 +478,7 @@ export default function MentorMessagesPage() {
               <CardContent className="flex-1 p-4 overflow-y-auto">
                 <div className="space-y-4">
                   {messages.map((message) => {
-                    const isSentByMe = message.senderId === session?.user?.id
+                    const isSentByMe = message.senderId === (session?.user?.id ? Number(session.user.id) : undefined)
                     
                     return (
                       <div

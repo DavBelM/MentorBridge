@@ -271,7 +271,12 @@ export function NotificationsDropdown({ userRole = "MENTEE" }: { userRole?: stri
         </ScrollArea>
         
         <div className="p-2 border-t">
-          <Link href="/dashboard/mentee/notifications" onClick={() => setOpen(false)}>
+          <Link 
+            href={userRole === "MENTOR" ? "/dashboard/mentor/notifications" : "dashboard/mentee/notifications"} 
+            onClick={() => setOpen(false)}
+            
+            >
+            
             <Button variant="outline" size="sm" className="w-full text-xs">
               View all notifications
             </Button>

@@ -76,6 +76,12 @@ export default function MessagesPage() {
     totalCount: 0,
     oldestMessageId: null
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedContact, setSelectedContact] = useState<{
+    id: number;
+    name: string;
+    avatar: string | null;
+  } | null>(null)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -85,6 +91,12 @@ export default function MessagesPage() {
   const refreshData = () => {
     setRefreshKey(prev => prev + 1)
   }
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   // Fetch message threads
   useEffect(() => {
@@ -128,45 +140,28 @@ export default function MessagesPage() {
     async function fetchMessages() {
       if (!activeThread) return
       
-      setIsLoadingMessages(true)
       try {
-        const response = await get<{ 
-          messages: Message[],
-          hasMore: boolean,
-          totalCount: number
-        }>(`/api/messages?connectionId=${activeThread}`)
+        const response = await fetch(`/api/messages?threadId=${activeThread}`)
         
-        if (!response) {
-          throw new Error('Failed to fetch messages')
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`)
         }
         
-        setMessages(response.messages)
-        setPagination({
-          hasMore: response.hasMore,
-          totalCount: response.totalCount,
-          oldestMessageId: response.messages.length > 0 ? response.messages[0].id : null
-        })
+        const data = await response.json()
         
-        // Update thread read status in the UI
-        setThreads(threads.map(thread => 
-          thread.id === activeThread 
-            ? { ...thread, unreadCount: 0 } 
-            : thread
-        ))
+        // Make sure we handle the data structure correctly
+        const messagesArray = Array.isArray(data) ? data : (data.messages || [])
+        setMessages(messagesArray)
         
-        // Update the URL with the active thread
-        if (threadId !== activeThread) {
-          router.push(`/dashboard/messages?thread=${activeThread}`)
-        }
+        // Scroll to bottom after messages load
+        scrollToBottom()
       } catch (error) {
-        console.error('Error fetching messages:', error)
+        console.error("Error fetching messages:", error)
         toast({
-          title: "Failed to load messages",
-          description: "Please try again later",
-          variant: "destructive"
+          title: "Error",
+          description: "Failed to fetch messages. Please try again.",
+          variant: "destructive",
         })
-      } finally {
-        setIsLoadingMessages(false)
       }
     }
     
@@ -287,6 +282,70 @@ export default function MessagesPage() {
   const activeContact = activeThread 
     ? threads.find(thread => thread.id === activeThread)?.contact 
     : null
+
+  // Check for menteeId parameter
+  useEffect(() => {
+    const menteeIdParam = searchParams.get("menteeId")
+    
+    if (menteeIdParam && user?.id) {
+      async function findOrCreateThread() {
+        try {
+          setIsLoading(true)
+          const response = await fetch('/api/messages/threads/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ menteeId: menteeIdParam }),
+          })
+          
+          if (!response.ok) throw new Error('Failed to find or create thread')
+          
+          const data = await response.json()
+          if (data.threadId) {
+            setActiveThread(data.threadId)
+            
+            // Update URL to use threadId parameter
+            router.push(`/dashboard/mentor/messages?threadId=${data.threadId}`, { scroll: false })
+            
+            // Refresh threads to make sure this thread appears
+            const threadsResponse = await fetch("/api/messages/threads")
+            if (threadsResponse.ok) {
+              const threadsData = await threadsResponse.json()
+              
+              // Fix the array handling - make sure we have an array
+              const threadsArray = Array.isArray(threadsData) 
+                ? threadsData 
+                : (threadsData.threads || [])
+              
+              setThreads(threadsArray)
+              
+              if (threadsArray.length > 0) {
+                // Find the thread to get contact info only if there are threads
+                const thread = threadsArray.find((t: Thread) => t.id === data.threadId)
+                if (thread) {
+                  setSelectedContact({
+                    id: thread.contact.id,
+                    name: thread.contact.fullname || "Mentee",
+                    avatar: thread.contact.profile?.profilePicture || null
+                  })
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error finding or creating thread:', error)
+          toast({
+            title: 'Error',
+            description: 'Could not start conversation with this mentee',
+            variant: 'destructive',
+          })
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      
+      findOrCreateThread()
+    }
+  }, [searchParams, user, router, toast])
     
   return (
     <div className="container py-6">
@@ -427,7 +486,7 @@ export default function MessagesPage() {
                     </div>
                   ) : (
                     messages.map(message => {
-                      const isOwnMessage = message.senderId === user?.id
+                      const isOwnMessage = message.senderId === (user?.id ? parseInt(user.id, 10) : undefined)
                       return (
                         <div 
                           key={message.id} 
@@ -499,3 +558,4 @@ export default function MessagesPage() {
     </div>
   )
 }
+

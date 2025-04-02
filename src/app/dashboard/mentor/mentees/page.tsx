@@ -128,6 +128,12 @@ export default function MentorMenteesPage() {
     router.push(`/dashboard/mentor/messages?menteeId=${menteeId}`)
   }
   
+  // In your mentees page where the "Message" button is
+  // In your mentees page where the "Message" button is
+  function handleMessageMentee(menteeId: number): void {
+    router.push(`/dashboard/mentor/messages?menteeId=${menteeId}`)
+  }
+
   // Navigate to schedule session with mentee
   const scheduleSession = (menteeId: number) => {
     router.push(`/dashboard/mentor/sessions/schedule?menteeId=${menteeId}`)

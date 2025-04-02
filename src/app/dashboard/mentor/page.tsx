@@ -172,7 +172,7 @@ export default function MentorDashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">
-          Welcome back, {user?.name || session?.user?.name || "Mentor"}
+          Welcome back, {user?.fullname || session?.user?.fullname || "Mentor"}
         </h1>
         <p className="text-muted-foreground">Here's an overview of your mentor activities.</p>
       </div>

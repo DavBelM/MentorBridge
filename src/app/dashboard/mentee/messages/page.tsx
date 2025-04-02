@@ -117,7 +117,7 @@ export default function MessagesPage() {
       })
       
       // Show notification for new message if not from active thread
-      if (data.threadId !== activeThread && data.senderId !== session?.user?.id) {
+      if (data.threadId !== activeThread && data.senderId !== Number(session?.user?.id)) {
         const sender = threads.find(t => t.id === data.threadId)?.contact.fullname
         toast({
           title: `New message from ${sender || 'your contact'}`,
@@ -274,7 +274,7 @@ export default function MessagesPage() {
       const optimisticMessage = {
         id: optimisticId,
         content: newMessage,
-        senderId: session?.user?.id || 0,
+        senderId: Number(session?.user?.id) || 0,
         threadId: activeThread,
         createdAt: new Date().toISOString(),
         pending: true
@@ -421,7 +421,7 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   messages.map((message) => {
-                    const isCurrentUser = message.senderId === session?.user?.id
+                    const isCurrentUser = message.senderId === Number(session?.user?.id)
                     return (
                       <div 
                         key={message.id} 
