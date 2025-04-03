@@ -205,22 +205,7 @@ export default function AdminDashboard() {
               Manage your platform and users
             </span>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/admin/settings")}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Platform Settings
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
-          </div>
+          
         </div>
       </header>
 
