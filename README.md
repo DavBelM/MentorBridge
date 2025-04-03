@@ -297,6 +297,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   <p>Developed by Bela Mitali</p>
   <p>
     <a href="https://linkedin.com/in/mitali-bela">LinkedIn</a> •
-    <a href="https://yourwebsite.com">Website</a>
+    <a href="https://mentor-bridge-3xq2.vercel.app/">Website</a>
   </p>
 </div>
